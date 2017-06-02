@@ -1,0 +1,10 @@
+yt-apikey=
+db-driver=
+db-url=
+
+mail.from=
+mail.transport.protocol.rfc822=smtps
+mail.smtps.auth=true
+mail.smtps.host=
+mail.smtps.user=
+mail.smtps.pass=
