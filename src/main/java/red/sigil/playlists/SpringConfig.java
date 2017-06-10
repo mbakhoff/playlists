@@ -1,13 +1,10 @@
 package red.sigil.playlists;
 
 import com.mchange.v2.c3p0.ComboPooledDataSource;
-import org.hibernate.jpa.HibernatePersistenceProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -16,8 +13,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.context.AbstractSecurityWebApplicationInitializer;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.WebApplicationInitializer;
 import org.springframework.web.filter.CharacterEncodingFilter;
 import org.springframework.web.servlet.DispatcherServlet;
@@ -39,7 +34,6 @@ public final class SpringConfig {
 
   @Configuration
   @EnableWebMvc
-  @EnableTransactionManagement
   @EnableScheduling
   public static class AppConfig extends WebMvcConfigurerAdapter {
 
@@ -64,22 +58,6 @@ public final class SpringConfig {
       cpds.setDriverClass(propertyService.getProperty("db-driver"));
       cpds.setJdbcUrl(propertyService.getProperty("db-url"));
       return cpds;
-    }
-
-    @Bean
-    LocalContainerEntityManagerFactoryBean jpaFactory() throws Exception {
-      LocalContainerEntityManagerFactoryBean factory = new LocalContainerEntityManagerFactoryBean();
-      factory.setDataSource(dataSource());
-      factory.setPersistenceProviderClass(HibernatePersistenceProvider.class);
-      factory.setPackagesToScan("red.sigil.playlists.entities");
-      factory.getJpaPropertyMap().put("hibernate.hbm2ddl.auto", "validate"); // create-drop|update|validate
-      factory.getJpaPropertyMap().put("hibernate.show_sql", "true");
-      return factory;
-    }
-
-    @Bean
-    PlatformTransactionManager transactionManager() {
-      return new JpaTransactionManager();
     }
   }
 

@@ -1,24 +1,31 @@
 package red.sigil.playlists.entities;
 
-import javax.persistence.Embeddable;
-
-@Embeddable
 public class PlaylistItem {
 
+  private Long id;
   private String youtubeId;
-
   private String title;
 
-  public PlaylistItem() {
-  }
-
-  public PlaylistItem(String youtubeId, String title) {
+  public PlaylistItem(Long id, String youtubeId, String title) {
+    this.id = id;
     this.youtubeId = youtubeId;
     this.title = title;
   }
 
+  public Long getId() {
+    return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
+  }
+
   public String getYoutubeId() {
     return youtubeId;
+  }
+
+  public void setYoutubeId(String youtubeId) {
+    this.youtubeId = youtubeId;
   }
 
   public String getTitle() {

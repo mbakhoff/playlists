@@ -1,30 +1,23 @@
 package red.sigil.playlists.entities;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.ManyToMany;
-import javax.persistence.Version;
-import java.util.Set;
-
-@Entity
 public class Account {
 
-  @Id
-  @GeneratedValue
   private Long id;
-
-  @Version
-  private Long version;
-
   private String email;
-
   private String password;
 
-  @ManyToMany
-  private Set<Playlist> playlists;
+  public Account(Long id, String email, String password) {
+    this.id = id;
+    this.email = email;
+    this.password = password;
+  }
 
-  public Account() {
+  public Long getId() {
+    return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
   }
 
   public String getEmail() {
@@ -41,14 +34,6 @@ public class Account {
 
   public void setPassword(String password) {
     this.password = password;
-  }
-
-  public Set<Playlist> getPlaylists() {
-    return playlists;
-  }
-
-  public void setPlaylists(Set<Playlist> playlists) {
-    this.playlists = playlists;
   }
 
   @Override

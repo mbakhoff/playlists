@@ -6,10 +6,13 @@ import org.springframework.stereotype.Component;
 import red.sigil.playlists.Utils;
 import red.sigil.playlists.entities.Account;
 import red.sigil.playlists.entities.Playlist;
+import red.sigil.playlists.entities.PlaylistItem;
+import red.sigil.playlists.TransactionScope;
 
-import javax.persistence.EntityManager;
-import javax.persistence.NoResultException;
-import javax.persistence.PersistenceContext;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,66 +23,212 @@ public class PlaylistService {
 
   private static Logger log = LoggerFactory.getLogger(PlaylistService.class);
 
-  @PersistenceContext
-  private EntityManager em;
+  public List<Playlist> getPlaylistsByEmail(String email) throws SQLException, ReflectiveOperationException {
+    ResultSet rs = executeQuery("" +
+            "SELECT * FROM playlist p" +
+            " JOIN account_playlist ap ON p.id = ap.playlists_id" +
+            " JOIN account a ON a.id = ap.account_id" +
+            " WHERE a.email = ?",
+        email);
 
-  public Set<Playlist> getPlaylists(String email) {
-    return getAccount(email).getPlaylists();
+    return mapRows(rs, this::mapPlaylist);
   }
 
-  public List<Playlist> getStalePlaylists() {
-    return em.createQuery("from Playlist p order by p.lastUpdate desc", Playlist.class)
-        .setMaxResults(30)
-        .getResultList();
+  private Playlist mapPlaylist(ResultSet rs) throws SQLException {
+    return new Playlist(
+            rs.getLong("id"),
+            rs.getString("youtubeId"),
+            rs.getString("title"),
+            rs.getTimestamp("lastUpdate").toInstant()
+        );
   }
 
-  public void startTracking(String email, String url) {
-    String id = Utils.parseListId(url);
-    Playlist playlist;
-    try {
-      playlist = em.createQuery("from Playlist p where p.youtubeId = :yid", Playlist.class)
-          .setParameter("yid", id)
-          .getSingleResult();
-    } catch (NoResultException e) {
-      playlist = new Playlist(id, Instant.EPOCH);
-      em.persist(playlist);
-    }
-    getAccount(email).getPlaylists().add(playlist);
-    log.info("started tracking " + id + " for " + email);
+  public List<Playlist> getPlaylistsByLastUpdate() throws SQLException, ReflectiveOperationException {
+    ResultSet rs = executeQuery("" +
+        "SELECT * FROM playlist" +
+        " ORDER BY lastUpdate DESC" +
+        " LIMIT 30");
+    return mapRows(rs, this::mapPlaylist);
   }
 
-  public void stopTracking(String email, Set<String> toRemove) {
-    Set<Playlist> playlists = getAccount(email).getPlaylists();
+  public void startTracking(String email, String url) throws SQLException, ReflectiveOperationException {
+    String yid = Utils.parseListId(url);
+
+    Playlist playlist = new Playlist(null, yid, null, Instant.EPOCH);
+    insert(playlist);
+
+    int result = executeUpdate("" +
+            "INSERT INTO account_playlist (account_id, playlists_id) " +
+            " VALUES ((SELECT id FROM account WHERE email = ?), ?);",
+        email,
+        playlist.getId());
+    if (result != 1)
+      throw new SQLException();
+    log.info("started tracking " + yid + " for " + email);
+  }
+
+  private void insert(Playlist playlist) throws SQLException {
+    ResultSet rs = executeQuery("" +
+            "INSERT INTO playlist as p (youtubeId, lastUpdate) " +
+            " VALUES (?, ?) " +
+            " ON CONFLICT (youtubeId) DO UPDATE SET youtubeId = p.youtubeId" +
+            " RETURNING id;",
+        playlist.getYoutubeId(),
+        Timestamp.from(playlist.getLastUpdate()));
+
+    if (!rs.next())
+      throw new SQLException();
+    playlist.setId(rs.getLong("id"));
+  }
+
+  public void stopTracking(String email, Set<String> toRemove) throws SQLException, ReflectiveOperationException {
+    List<Playlist> playlists = getPlaylistsByEmail(email);
     for (Playlist playlist : new ArrayList<>(playlists)) {
       if (toRemove.contains(playlist.getYoutubeId())) {
-        playlists.remove(playlist);
-        if (findSubscribers(playlist).isEmpty()) {
-          em.remove(playlist);
+        unlinkPlaylist(email, playlist);
+        List<Account> subscribers = findSubscribers(playlist);
+        if (subscribers.isEmpty()) {
+          deletePlaylist(playlist);
         }
       }
     }
     log.info("stopped tracking " + toRemove + " for " + email);
   }
 
-  public List<Account> findSubscribers(Playlist playlist) {
-    return em.createQuery("from Account a where :playlist member of a.playlists", Account.class)
-        .setParameter("playlist", playlist)
-        .getResultList();
+  private void deletePlaylist(Playlist playlist) throws SQLException {
+    int result = executeUpdate("" +
+            "DELETE FROM playlist " +
+            " WHERE id = ?;",
+        playlist.getId());
+    if (result != 1)
+      throw new SQLException();
   }
 
-  public void deletePlaylist(Playlist playlist) {
+  private void unlinkPlaylist(String email, Playlist playlist) throws SQLException {
+    int result = executeUpdate("" +
+            "DELETE FROM account_playlist" +
+            " WHERE playlists_id = ? " +
+            "   AND account_id = (SELECT id FROM account WHERE email = ?);",
+        playlist.getId(),
+        email);
+    if (result != 1)
+      throw new SQLException();
+  }
+
+  public List<Account> findSubscribers(Playlist playlist) throws SQLException, ReflectiveOperationException {
+    ResultSet rs = executeQuery("" +
+            "SELECT a.* FROM account a" +
+            " JOIN account_playlist ap ON a.id = ap.account_id" +
+            " WHERE ap.playlists_id = ?",
+        playlist.getId());
+
+    return mapRows(rs, this::mapAccount);
+  }
+
+  private Account mapAccount(ResultSet rs) throws SQLException {
+    return new Account(
+        rs.getLong("id"),
+        rs.getString("email"),
+        rs.getString("password")
+    );
+  }
+
+  public void unlinkAndDeletePlaylist(Playlist playlist) throws SQLException, ReflectiveOperationException {
     List<Account> accounts = findSubscribers(playlist);
     for (Account account : accounts) {
-      account.getPlaylists().remove(playlist);
+      unlinkPlaylist(account.getEmail(), playlist);
     }
-    em.remove(playlist);
+    deletePlaylist(playlist);
   }
 
-  private Account getAccount(String email) {
-    // TODO move to a more appropriate class
-    return em.createQuery("from Account a where a.email = :email", Account.class)
-        .setParameter("email", email)
-        .getSingleResult();
+  public List<PlaylistItem> getItems(Playlist playlist) throws SQLException, ReflectiveOperationException {
+    ResultSet rs = executeQuery("" +
+            "SELECT * FROM playlist_items " +
+            " WHERE playlist_id = ?;",
+        playlist.getId());
+    return mapRows(rs, this::mapPlaylistItem);
   }
 
+  private PlaylistItem mapPlaylistItem(ResultSet rs) throws SQLException {
+    return new PlaylistItem(
+        rs.getLong("id"),
+        rs.getString("youtubeId"),
+        rs.getString("title")
+    );
+  }
+
+  public void removeItem(PlaylistItem item) throws SQLException {
+    int result = executeUpdate("" +
+            "DELETE FROM playlist_items " +
+            " WHERE id = ?;",
+        item.getId());
+    if (result != 1)
+      throw new SQLException();
+  }
+
+  public void update(Playlist playlist) throws SQLException {
+    int result = executeUpdate("" +
+            "UPDATE playlist " +
+            " SET youtubeId=?, title=?, lastUpdate=? " +
+            " WHERE id = ?;",
+        playlist.getYoutubeId(),
+        playlist.getTitle(),
+        Timestamp.from(playlist.getLastUpdate()),
+        playlist.getId());
+    if (result != 1)
+      throw new SQLException();
+  }
+
+  public void insert(Playlist playlist, PlaylistItem item) throws SQLException {
+    ResultSet rs = executeQuery("" +
+            "INSERT INTO playlist_items (playlist_id, youtubeId, title) " +
+            " VALUES (?, ?, ?) " +
+            " RETURNING id;",
+        playlist.getId(),
+        item.getYoutubeId(),
+        item.getTitle());
+    if (!rs.next())
+      throw new SQLException();
+    item.setId(rs.getLong("id"));
+  }
+
+  public void update(PlaylistItem item) throws SQLException {
+    int result = executeUpdate("" +
+            "UPDATE playlist " +
+            " SET youtubeId = ?, title = ? " +
+            " WHERE id = ?;",
+        item.getYoutubeId(),
+        item.getTitle(),
+        item.getId());
+    if (result != 1)
+      throw new SQLException();
+  }
+
+  private static <T> List<T> mapRows(ResultSet rs, Mapper<T> mapper) throws SQLException {
+    List<T> result = new ArrayList<>();
+    while (rs.next()) {
+      result.add(mapper.apply(rs));
+    }
+    return result;
+  }
+
+  private static int executeUpdate(String sql, Object... params) throws SQLException {
+    return prepare(sql, params).executeUpdate();
+  }
+
+  private static ResultSet executeQuery(String sql, Object... params) throws SQLException {
+    return prepare(sql, params).executeQuery();
+  }
+
+  private static PreparedStatement prepare(String sql, Object... params) throws SQLException {
+    PreparedStatement ps = TransactionScope.conn().prepareStatement(sql);
+    for (int i = 0; i < params.length; i++) {
+      ps.setObject(i + 1, params[i]);
+    }
+    return ps;
+  }
+
+  private interface Mapper<T> {
+    T apply(ResultSet rs) throws SQLException;
+  }
 }

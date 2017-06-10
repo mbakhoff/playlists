@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import red.sigil.playlists.entities.Account;
 import red.sigil.playlists.entities.Playlist;
 import red.sigil.playlists.entities.PlaylistItem;
@@ -14,6 +13,8 @@ import red.sigil.playlists.services.PlaylistFetchService;
 import red.sigil.playlists.services.PlaylistFetchService.ItemInfo;
 import red.sigil.playlists.services.PlaylistService;
 
+import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -37,14 +38,14 @@ public class ScheduledUpdater {
   @Autowired
   private EmailService emailService;
 
-  @Transactional
+  @Autowired
+  private DataSource dataSource;
+
   @Scheduled(fixedDelay = 60_000, initialDelay = 3000)
   public void runSyncTasks() throws Exception {
-    try {
+    try (TransactionScope scope = new TransactionScope(dataSource)) {
       doRunSyncTasks();
-    } catch (Exception e) {
-      log.error("uncaught exception", e);
-      throw e;
+      scope.commit();
     }
   }
 
@@ -67,19 +68,19 @@ public class ScheduledUpdater {
 
   private List<PlaylistItemChange> findChangedPlaylistItems() throws Exception {
     List<PlaylistItemChange> changes = new ArrayList<>();
-    for (Playlist playlist : playlistService.getStalePlaylists()) {
+    for (Playlist playlist : playlistService.getPlaylistsByLastUpdate()) {
       if (playlist.getLastUpdate().plus(1, ChronoUnit.HOURS).isAfter(Instant.now()))
         continue;
 
       ItemInfo info = playlistFetchService.read(playlist.getYoutubeId());
       if (info == null) {
-        playlistService.deletePlaylist(playlist);
+        playlistService.unlinkAndDeletePlaylist(playlist);
         log.info("deleting playlist " + playlist.getYoutubeId());
         continue;
       }
 
       log.info("updating playlist " + playlist.getYoutubeId());
-      Set<PlaylistItem> oldItems = playlist.getItems();
+      List<PlaylistItem> oldItems = playlistService.getItems(playlist);
       Set<PlaylistItem> newItems;
       try {
         newItems = toSet(playlistFetchService.readItems(playlist.getYoutubeId()));
@@ -100,29 +101,31 @@ public class ScheduledUpdater {
         PlaylistItem newItem = mappedNew.get(oldItem.getYoutubeId());
         if (newItem == null) {
           changes.add(new PlaylistItemChange(playlist, oldItem.getYoutubeId(), oldItem.getTitle(), null));
-          playlist.getItems().remove(oldItem);
+          playlistService.removeItem(oldItem);
           log.debug("item deleted " + oldItem.getYoutubeId());
         } else if (!oldItem.getTitle().equals(newItem.getTitle())) {
           changes.add(new PlaylistItemChange(playlist, oldItem.getYoutubeId(), oldItem.getTitle(), newItem.getTitle()));
           oldItem.setTitle(newItem.getTitle());
+          playlistService.update(oldItem);
           log.debug("item renamed " + oldItem.getYoutubeId());
         }
       }
       for (PlaylistItem newItem : new ArrayList<>(newItems)) {
         PlaylistItem oldItem = mappedOld.get(newItem.getYoutubeId());
         if (oldItem == null) {
-          playlist.getItems().add(newItem);
+          playlistService.insert(playlist, newItem);
           log.debug("item added " + newItem.getYoutubeId());
         }
       }
 
       playlist.setTitle(info.title);
       playlist.setLastUpdate(Instant.now());
+      playlistService.update(playlist);
     }
     return changes;
   }
 
-  private Map<Account, List<PlaylistChange>> getChangesByAccount(List<PlaylistItemChange> changes) {
+  private Map<Account, List<PlaylistChange>> getChangesByAccount(List<PlaylistItemChange> changes) throws SQLException, ReflectiveOperationException {
     Map<Playlist, PlaylistChange> changesByPlaylist = new HashMap<>();
     for (PlaylistItemChange change : changes) {
       changesByPlaylist.computeIfAbsent(change.playlist, PlaylistChange::new).itemChanges.add(change);
@@ -159,7 +162,7 @@ public class ScheduledUpdater {
     Set<PlaylistItem> result = new HashSet<>();
     for (ItemInfo item : items) {
       if (item.id != null)
-        result.add(new PlaylistItem(item.id, item.title));
+        result.add(new PlaylistItem(null, item.id, item.title));
     }
     return result;
   }
