@@ -13,8 +13,8 @@ import red.sigil.playlists.services.FreemarkerEmailFormatter;
 import red.sigil.playlists.services.PlaylistFetchService;
 import red.sigil.playlists.services.PlaylistFetchService.ItemInfo;
 import red.sigil.playlists.services.PlaylistService;
+import red.sigil.playlists.tx.Transactional;
 
-import javax.sql.DataSource;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -40,20 +40,11 @@ public class ScheduledUpdater {
   private EmailService emailService;
 
   @Autowired
-  private DataSource dataSource;
-
-  @Autowired
   private FreemarkerEmailFormatter emailFormatter;
 
+  @Transactional
   @Scheduled(fixedDelay = 60_000, initialDelay = 3000)
   public void runSyncTasks() throws Exception {
-    try (TransactionScope scope = new TransactionScope(dataSource)) {
-      doRunSyncTasks();
-      scope.commit();
-    }
-  }
-
-  private void doRunSyncTasks() throws Exception {
     List<PlaylistItemChange> changes = findChangedPlaylistItems();
     if (!changes.isEmpty()) {
       Map<Account, List<PlaylistChange>> changesByAccount = getChangesByAccount(changes);

@@ -2,12 +2,13 @@ package red.sigil.playlists.services;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import red.sigil.playlists.Utils;
 import red.sigil.playlists.entities.Account;
 import red.sigil.playlists.entities.Playlist;
 import red.sigil.playlists.entities.PlaylistItem;
-import red.sigil.playlists.TransactionScope;
+import red.sigil.playlists.tx.TransactionAwareConnection;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -22,6 +23,9 @@ import java.util.Set;
 public class PlaylistService {
 
   private static Logger log = LoggerFactory.getLogger(PlaylistService.class);
+
+  @Autowired
+  private TransactionAwareConnection conn;
 
   public List<Playlist> getPlaylistsByEmail(String email) throws SQLException, ReflectiveOperationException {
     ResultSet rs = executeQuery("" +
@@ -212,16 +216,16 @@ public class PlaylistService {
     return result;
   }
 
-  private static int executeUpdate(String sql, Object... params) throws SQLException {
+  private int executeUpdate(String sql, Object... params) throws SQLException {
     return prepare(sql, params).executeUpdate();
   }
 
-  private static ResultSet executeQuery(String sql, Object... params) throws SQLException {
+  private ResultSet executeQuery(String sql, Object... params) throws SQLException {
     return prepare(sql, params).executeQuery();
   }
 
-  private static PreparedStatement prepare(String sql, Object... params) throws SQLException {
-    PreparedStatement ps = TransactionScope.conn().prepareStatement(sql);
+  private PreparedStatement prepare(String sql, Object... params) throws SQLException {
+    PreparedStatement ps = conn.prepareStatement(sql);
     for (int i = 0; i < params.length; i++) {
       ps.setObject(i + 1, params[i]);
     }

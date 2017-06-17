@@ -11,9 +11,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import red.sigil.playlists.entities.Playlist;
 import red.sigil.playlists.services.PlaylistService;
-import red.sigil.playlists.TransactionScope;
+import red.sigil.playlists.tx.Transactional;
 
-import javax.sql.DataSource;
 import java.util.HashSet;
 import java.util.List;
 
@@ -23,37 +22,28 @@ public class PlaylistsController {
   @Autowired
   private PlaylistService playlistService;
 
-  @Autowired
-  private DataSource dataSource;
-
   @RequestMapping(path = "/", method = RequestMethod.GET)
+  @Transactional
   public String getOverview(@AuthenticationPrincipal User user, ModelMap model) throws Exception {
-    try (TransactionScope scope = new TransactionScope(dataSource)) {
-      List<Playlist> playlists = playlistService.getPlaylistsByEmail(user.getUsername());
-      model.addAttribute("email", user.getUsername());
-      model.addAttribute("playlists", playlists);
-      scope.commit();
-      return "playlists";
-    }
+    List<Playlist> playlists = playlistService.getPlaylistsByEmail(user.getUsername());
+    model.addAttribute("email", user.getUsername());
+    model.addAttribute("playlists", playlists);
+    return "playlists";
   }
 
+  @Transactional
   @RequestMapping(path = "/start", method = RequestMethod.POST)
   public String startTracking(@AuthenticationPrincipal User user, @RequestParam("url") String url, ModelMap model) throws Exception {
-    try (TransactionScope scope = new TransactionScope(dataSource)) {
-      playlistService.startTracking(user.getUsername(), url);
-      scope.commit();
-    }
+    playlistService.startTracking(user.getUsername(), url);
     return "redirect:/";
   }
 
+  @Transactional
   @RequestMapping(path = "/stop", method = RequestMethod.POST)
   public String stopTracking(@AuthenticationPrincipal User user, @RequestParam MultiValueMap<String, String> params, ModelMap model) throws Exception {
-    try (TransactionScope scope = new TransactionScope(dataSource)) {
-      List<String> ids = params.get("remove");
-      if (ids != null) {
-        playlistService.stopTracking(user.getUsername(), new HashSet<>(ids));
-      }
-      scope.commit();
+    List<String> ids = params.get("remove");
+    if (ids != null) {
+      playlistService.stopTracking(user.getUsername(), new HashSet<>(ids));
     }
     return "redirect:/";
   }
