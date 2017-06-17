@@ -6,13 +6,19 @@ import org.springframework.aop.Pointcut;
 import org.springframework.aop.PointcutAdvisor;
 import org.springframework.aop.support.StaticMethodMatcherPointcut;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
 
+@Component
 class TransactionInterceptor implements PointcutAdvisor {
 
+  private final TransactionManager transactionManager;
+
   @Autowired
-  private TransactionManager transactionManager;
+  public TransactionInterceptor(TransactionManager transactionManager) {
+    this.transactionManager = transactionManager;
+  }
 
   @Override
   public boolean isPerInstance() {

@@ -2,7 +2,6 @@ package red.sigil.playlists.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import red.sigil.playlists.services.PropertyService;
 
 import javax.annotation.PostConstruct;
 import javax.mail.Authenticator;
@@ -17,11 +16,15 @@ import java.util.Properties;
 @Component
 public class EmailService {
 
-  @Autowired
-  private PropertyService propertyService;
+  private final PropertyService propertyService;
 
   private Session session;
   private String from;
+
+  @Autowired
+  public EmailService(PropertyService propertyService) {
+    this.propertyService = propertyService;
+  }
 
   @PostConstruct
   private void prepareSession() {

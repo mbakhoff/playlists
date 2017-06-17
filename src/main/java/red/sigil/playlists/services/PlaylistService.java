@@ -24,8 +24,12 @@ public class PlaylistService {
 
   private static Logger log = LoggerFactory.getLogger(PlaylistService.class);
 
+  private final TransactionAwareConnection conn;
+
   @Autowired
-  private TransactionAwareConnection conn;
+  public PlaylistService(TransactionAwareConnection conn) {
+    this.conn = conn;
+  }
 
   public List<Playlist> getPlaylistsByEmail(String email) throws SQLException, ReflectiveOperationException {
     ResultSet rs = executeQuery("" +

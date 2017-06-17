@@ -13,8 +13,12 @@ import javax.servlet.http.HttpServletRequest;
 @Controller
 public class LoginController {
 
+  private final PostgresUserService userService;
+
   @Autowired
-  private PostgresUserService userService;
+  public LoginController(PostgresUserService userService) {
+    this.userService = userService;
+  }
 
   @RequestMapping(path = "/auth/login", method = RequestMethod.GET)
   public String renderLogin() {

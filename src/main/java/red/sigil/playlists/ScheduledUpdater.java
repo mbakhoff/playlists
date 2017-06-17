@@ -30,17 +30,18 @@ public class ScheduledUpdater {
 
   private static final Logger log = LoggerFactory.getLogger(ScheduledUpdater.class);
 
-  @Autowired
-  private PlaylistService playlistService;
+  private final PlaylistService playlistService;
+  private final PlaylistFetchService playlistFetchService;
+  private final EmailService emailService;
+  private final FreemarkerEmailFormatter emailFormatter;
 
   @Autowired
-  private PlaylistFetchService playlistFetchService;
-
-  @Autowired
-  private EmailService emailService;
-
-  @Autowired
-  private FreemarkerEmailFormatter emailFormatter;
+  public ScheduledUpdater(PlaylistService playlistService, PlaylistFetchService playlistFetchService, EmailService emailService, FreemarkerEmailFormatter emailFormatter) {
+    this.playlistService = playlistService;
+    this.playlistFetchService = playlistFetchService;
+    this.emailService = emailService;
+    this.emailFormatter = emailFormatter;
+  }
 
   @Transactional
   @Scheduled(fixedDelay = 60_000, initialDelay = 3000)

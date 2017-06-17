@@ -26,11 +26,14 @@ public class PostgresUserService implements UserDetailsService {
       new SimpleGrantedAuthority("USER")
   );
 
-  @Autowired
-  private DataSource dataSource;
+  private final DataSource dataSource;
+  private final PasswordEncoder passwordEncoder;
 
   @Autowired
-  private PasswordEncoder passwordEncoder;
+  public PostgresUserService(DataSource dataSource, PasswordEncoder passwordEncoder) {
+    this.dataSource = dataSource;
+    this.passwordEncoder = passwordEncoder;
+  }
 
   @Override
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {

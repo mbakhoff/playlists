@@ -20,8 +20,7 @@ import java.util.List;
 @Component
 public class PlaylistFetchService {
 
-  @Autowired
-  private PropertyService propertyService;
+  private final PropertyService propertyService;
 
   private static final String PLAYLISTS =
       "https://www.googleapis.com/youtube/v3/playlists";
@@ -31,6 +30,11 @@ public class PlaylistFetchService {
   private CloseableHttpClient httpclient;
   private ObjectMapper mapper;
   private String apiKey;
+
+  @Autowired
+  public PlaylistFetchService(PropertyService propertyService) {
+    this.propertyService = propertyService;
+  }
 
   @PostConstruct
   public void init() throws Exception {

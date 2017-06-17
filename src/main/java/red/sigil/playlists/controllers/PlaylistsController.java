@@ -19,8 +19,12 @@ import java.util.List;
 @Controller
 public class PlaylistsController {
   
+  private final PlaylistService playlistService;
+
   @Autowired
-  private PlaylistService playlistService;
+  public PlaylistsController(PlaylistService playlistService) {
+    this.playlistService = playlistService;
+  }
 
   @RequestMapping(path = "/", method = RequestMethod.GET)
   @Transactional

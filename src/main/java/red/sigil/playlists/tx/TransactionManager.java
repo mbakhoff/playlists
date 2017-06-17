@@ -1,6 +1,7 @@
 package red.sigil.playlists.tx;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Method;
@@ -8,12 +9,17 @@ import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+@Component
 class TransactionManager {
 
   private static final ThreadLocal<Connection> current = new ThreadLocal<>();
 
+  private final DataSource dataSource;
+
   @Autowired
-  private DataSource dataSource;
+  public TransactionManager(DataSource dataSource) {
+    this.dataSource = dataSource;
+  }
 
   public TransactionAwareConnection getConnection() {
     return (TransactionAwareConnection) Proxy.newProxyInstance(
