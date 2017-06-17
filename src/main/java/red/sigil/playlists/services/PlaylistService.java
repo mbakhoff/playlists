@@ -71,7 +71,7 @@ public class PlaylistService {
         email,
         playlist.getId());
     if (result != 1)
-      throw new SQLException();
+      throw new SQLException("email " + email + " pl " + playlist.getId());
     log.info("started tracking " + yid + " for " + email);
   }
 
@@ -85,7 +85,7 @@ public class PlaylistService {
         Timestamp.from(playlist.getLastUpdate()));
 
     if (!rs.next())
-      throw new SQLException();
+      throw new SQLException("yid " + playlist.getYoutubeId());
     playlist.setId(rs.getLong("id"));
   }
 
@@ -109,7 +109,7 @@ public class PlaylistService {
             " WHERE id = ?;",
         playlist.getId());
     if (result != 1)
-      throw new SQLException();
+      throw new SQLException("playlist " + playlist.getId());
   }
 
   private void unlinkPlaylist(String email, Playlist playlist) throws SQLException {
@@ -120,7 +120,7 @@ public class PlaylistService {
         playlist.getId(),
         email);
     if (result != 1)
-      throw new SQLException();
+      throw new SQLException("pl " + playlist.getId() + " email " + email);
   }
 
   public List<Account> findSubscribers(Playlist playlist) throws SQLException, ReflectiveOperationException {
@@ -171,7 +171,7 @@ public class PlaylistService {
             " WHERE id = ?;",
         item.getId());
     if (result != 1)
-      throw new SQLException();
+      throw new SQLException("item " + item.getId());
   }
 
   public void update(Playlist playlist) throws SQLException {
@@ -184,7 +184,7 @@ public class PlaylistService {
         Timestamp.from(playlist.getLastUpdate()),
         playlist.getId());
     if (result != 1)
-      throw new SQLException();
+      throw new SQLException("playlist " + playlist.getId());
   }
 
   public void insert(Playlist playlist, PlaylistItem item) throws SQLException {
@@ -196,20 +196,20 @@ public class PlaylistService {
         item.getYoutubeId(),
         item.getTitle());
     if (!rs.next())
-      throw new SQLException();
+      throw new SQLException("pl " + playlist.getId() + " yid " + item.getYoutubeId());
     item.setId(rs.getLong("id"));
   }
 
   public void update(PlaylistItem item) throws SQLException {
     int result = executeUpdate("" +
-            "UPDATE playlist " +
+            "UPDATE playlist_items " +
             " SET youtubeId = ?, title = ? " +
             " WHERE id = ?;",
         item.getYoutubeId(),
         item.getTitle(),
         item.getId());
     if (result != 1)
-      throw new SQLException();
+      throw new SQLException("playlist " + item.getId());
   }
 
   private static <T> List<T> mapRows(ResultSet rs, Mapper<T> mapper) throws SQLException {
