@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import red.sigil.playlists.entities.Account;
 import red.sigil.playlists.entities.Playlist;
 import red.sigil.playlists.entities.PlaylistItem;
@@ -13,7 +14,6 @@ import red.sigil.playlists.services.FreemarkerEmailFormatter;
 import red.sigil.playlists.services.PlaylistFetchService;
 import red.sigil.playlists.services.PlaylistFetchService.ItemInfo;
 import red.sigil.playlists.services.PlaylistService;
-import red.sigil.playlists.tx.Transactional;
 
 import java.sql.SQLException;
 import java.time.Instant;

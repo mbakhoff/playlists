@@ -2,8 +2,8 @@ server.use-forward-headers=true
 spring.freemarker.suffix=.ftl
 
 yt-apikey=
-db-driver=org.postgresql.Driver
-db-url=jdbc:postgresql://localhost/ypt?user=&password=
+
+spring.datasource.url=jdbc:postgresql://localhost/ypt?user=&password=
 
 mail.from=
 mail.transport.protocol.rfc822=smtps

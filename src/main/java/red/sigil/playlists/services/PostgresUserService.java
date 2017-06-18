@@ -1,7 +1,7 @@
 package red.sigil.playlists.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
@@ -11,11 +11,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Set;
 
@@ -26,27 +21,26 @@ public class PostgresUserService implements UserDetailsService {
       new SimpleGrantedAuthority("USER")
   );
 
-  private final DataSource dataSource;
+  private final JdbcTemplate jdbc;
   private final PasswordEncoder passwordEncoder;
 
   @Autowired
-  public PostgresUserService(DataSource dataSource, PasswordEncoder passwordEncoder) {
-    this.dataSource = dataSource;
+  public PostgresUserService(JdbcTemplate jdbc, PasswordEncoder passwordEncoder) {
+    this.jdbc = jdbc;
     this.passwordEncoder = passwordEncoder;
   }
 
   @Override
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-    try (Connection connection = dataSource.getConnection()) {
-      PreparedStatement stmt = connection.prepareStatement("SELECT * FROM account WHERE email = ?;");
-      stmt.setString(1, username);
-      ResultSet rs = stmt.executeQuery();
-      if (!rs.next())
-        throw new UsernameNotFoundException(username);
-      return new User(username, rs.getString("password"), DEFAULT_AUTHORITY);
-    } catch (SQLException e) {
-      throw new AuthenticationServiceException("Failed to load user " + username, e);
-    }
+    String password = jdbc.queryForObject(
+        "SELECT password FROM account WHERE email = ?;",
+        String.class,
+        username
+    );
+
+    if (password == null)
+      throw new UsernameNotFoundException(username);
+    return new User(username, password, DEFAULT_AUTHORITY);
   }
 
   public void register(String username, String password) {
@@ -54,15 +48,13 @@ public class PostgresUserService implements UserDetailsService {
       throw new IllegalArgumentException("bad username");
     if (password == null || password.isEmpty() || password.length() > 128)
       throw new IllegalArgumentException("bad password");
-    
-    try (Connection connection = dataSource.getConnection()) {
-      PreparedStatement registration = connection.prepareStatement("INSERT INTO account (email, password) VALUES (?, ?);");
-      registration.setString(1, username);
-      registration.setString(2, passwordEncoder.encode(password));
-      if (registration.executeUpdate() != 1)
-        throw new IllegalStateException("Registration failed for " + username);
-    } catch (SQLException e) {
-      throw new IllegalStateException("Auth database error", e);
-    }
+
+    int rows = jdbc.update(
+        "INSERT INTO account (email, password) VALUES (?, ?);",
+        username,
+        passwordEncoder.encode(password)
+    );
+    if (rows != 1)
+      throw new IllegalStateException("Registration failed for " + username);
   }
 }
