@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-import red.sigil.playlists.Utils;
 import red.sigil.playlists.entities.Account;
 import red.sigil.playlists.entities.Playlist;
 import red.sigil.playlists.entities.PlaylistItem;
@@ -17,6 +16,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class PlaylistService {
@@ -60,7 +61,7 @@ public class PlaylistService {
   }
 
   public void startTracking(String email, String url) throws SQLException, ReflectiveOperationException {
-    String yid = Utils.parseListId(url);
+    String yid = parseListId(url);
 
     Playlist playlist = new Playlist(null, yid, null, Instant.EPOCH);
     insert(playlist);
@@ -221,5 +222,14 @@ public class PlaylistService {
     );
     if (result != 1)
       throw new SQLException("playlist " + item.getId());
+  }
+
+  private String parseListId(String url) {
+    // e.g. https://www.youtube.com/playlist?list=PL7USMo--IcSi5p44jTZTezqS3Z-MEC6DU
+    Matcher matcher = Pattern.compile(".*[?&]list=([A-Za-z0-9\\-_]+).*").matcher(url);
+    if (matcher.matches()) {
+      return matcher.group(1);
+    }
+    throw new IllegalArgumentException(url);
   }
 }
