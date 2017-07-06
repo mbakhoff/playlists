@@ -35,7 +35,7 @@ public class PostgresUserService implements UserDetailsService {
     String password = jdbc.queryForObject(
         "SELECT password FROM account WHERE email = ?;",
         String.class,
-        username
+        username.toLowerCase()
     );
 
     if (password == null)
@@ -51,7 +51,7 @@ public class PostgresUserService implements UserDetailsService {
 
     int rows = jdbc.update(
         "INSERT INTO account (email, password) VALUES (?, ?);",
-        username,
+        username.toLowerCase(),
         passwordEncoder.encode(password)
     );
     if (rows != 1)
