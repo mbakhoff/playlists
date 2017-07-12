@@ -1,5 +1,5 @@
 server.use-forward-headers=true
-secure.cookie=true
+server.tomcat.internal-proxies=127.0.0.1|0:0:0:0:0:0:0:1
 spring.freemarker.suffix=.ftl
 
 yt-apikey=
