@@ -1,52 +1,29 @@
 package red.sigil.playlists.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-import javax.mail.Authenticator;
 import javax.mail.Message;
-import javax.mail.PasswordAuthentication;
-import javax.mail.Session;
-import javax.mail.Transport;
 import javax.mail.internet.MimeMessage;
 import java.util.Date;
-import java.util.Properties;
 
 @Component
 public class EmailService {
 
-  private final PropertyService propertyService;
-
-  private Session session;
-  private String from;
+  private final JavaMailSender mailSender;
 
   @Autowired
-  public EmailService(PropertyService propertyService) {
-    this.propertyService = propertyService;
-  }
-
-  @PostConstruct
-  private void prepareSession() {
-    Properties props = propertyService.getProps();
-    this.from = props.getProperty("mail.from");
-    this.session = Session.getInstance(props, new Authenticator() {
-      @Override
-      protected PasswordAuthentication getPasswordAuthentication() {
-        return new PasswordAuthentication(
-            props.getProperty("mail.smtps.user"),
-            props.getProperty("mail.smtps.pass"));
-      }
-    });
+  public EmailService(JavaMailSender mailSender) {
+    this.mailSender = mailSender;
   }
 
   public void send(String recipientEmail, String title, String message) throws Exception {
-    MimeMessage msg = new MimeMessage(session);
-    msg.setFrom(from);
+    MimeMessage msg = mailSender.createMimeMessage();
     msg.setRecipients(Message.RecipientType.TO, recipientEmail);
     msg.setSubject(title);
     msg.setText(message, "utf-8", "html");
     msg.setSentDate(new Date());
-    Transport.send(msg);
+    mailSender.send(msg);
   }
 }

@@ -3,6 +3,7 @@ package red.sigil.playlists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,7 +14,7 @@ import red.sigil.playlists.services.EmailService;
 import red.sigil.playlists.services.FreemarkerEmailFormatter;
 import red.sigil.playlists.services.PlaylistFetchService;
 import red.sigil.playlists.services.PlaylistFetchService.ItemInfo;
-import red.sigil.playlists.services.PlaylistService;
+import red.sigil.playlists.services.PlaylistRepository;
 
 import java.sql.SQLException;
 import java.time.Instant;
@@ -30,14 +31,14 @@ public class ScheduledUpdater {
 
   private static final Logger log = LoggerFactory.getLogger(ScheduledUpdater.class);
 
-  private final PlaylistService playlistService;
+  private final PlaylistRepository playlistRepository;
   private final PlaylistFetchService playlistFetchService;
   private final EmailService emailService;
   private final FreemarkerEmailFormatter emailFormatter;
 
   @Autowired
-  public ScheduledUpdater(PlaylistService playlistService, PlaylistFetchService playlistFetchService, EmailService emailService, FreemarkerEmailFormatter emailFormatter) {
-    this.playlistService = playlistService;
+  public ScheduledUpdater(PlaylistRepository playlistRepository, PlaylistFetchService playlistFetchService, EmailService emailService, FreemarkerEmailFormatter emailFormatter) {
+    this.playlistRepository = playlistRepository;
     this.playlistFetchService = playlistFetchService;
     this.emailService = emailService;
     this.emailFormatter = emailFormatter;
@@ -64,19 +65,19 @@ public class ScheduledUpdater {
 
   private List<PlaylistItemChange> findChangedPlaylistItems() throws Exception {
     List<PlaylistItemChange> changes = new ArrayList<>();
-    for (Playlist playlist : playlistService.getPlaylistsByLastUpdate()) {
+    for (Playlist playlist : playlistRepository.findAllByOrderByLastUpdateDesc(new PageRequest(0, 30))) {
       if (playlist.getLastUpdate().plus(1, ChronoUnit.HOURS).isAfter(Instant.now()))
         continue;
 
       ItemInfo info = playlistFetchService.read(playlist.getYoutubeId());
       if (info == null) {
-        playlistService.unlinkAndDeletePlaylist(playlist);
+        playlistRepository.delete(playlist);
         log.info("deleting playlist " + playlist.getYoutubeId());
         continue;
       }
 
       log.info("updating playlist " + playlist.getYoutubeId());
-      List<PlaylistItem> oldItems = playlistService.getItems(playlist);
+      Set<PlaylistItem> oldItems = playlist.getPlaylistItems();
       Set<PlaylistItem> newItems;
       try {
         newItems = toSet(playlistFetchService.readItems(playlist.getYoutubeId()));
@@ -97,26 +98,24 @@ public class ScheduledUpdater {
         PlaylistItem newItem = mappedNew.get(oldItem.getYoutubeId());
         if (newItem == null) {
           changes.add(new PlaylistItemChange(playlist, oldItem.getYoutubeId(), oldItem.getTitle(), null));
-          playlistService.removeItem(oldItem);
+          playlist.getPlaylistItems().remove(oldItem);
           log.debug("item deleted " + oldItem.getYoutubeId());
         } else if (!oldItem.getTitle().equals(newItem.getTitle())) {
           changes.add(new PlaylistItemChange(playlist, oldItem.getYoutubeId(), oldItem.getTitle(), newItem.getTitle()));
           oldItem.setTitle(newItem.getTitle());
-          playlistService.update(oldItem);
           log.debug("item renamed " + oldItem.getYoutubeId());
         }
       }
       for (PlaylistItem newItem : new ArrayList<>(newItems)) {
         PlaylistItem oldItem = mappedOld.get(newItem.getYoutubeId());
         if (oldItem == null) {
-          playlistService.insert(playlist, newItem);
+          playlist.getPlaylistItems().add(newItem);
           log.debug("item added " + newItem.getYoutubeId());
         }
       }
 
       playlist.setTitle(info.title);
       playlist.setLastUpdate(Instant.now());
-      playlistService.update(playlist);
     }
     return changes;
   }
@@ -128,7 +127,7 @@ public class ScheduledUpdater {
     }
     Map<Account, List<PlaylistChange>> changesPerAccount = new HashMap<>();
     for (PlaylistChange playlistChange : changesByPlaylist.values()) {
-      for (Account subscriber : playlistService.findSubscribers(playlistChange.playlist)) {
+      for (Account subscriber : playlistChange.playlist.getAccounts()) {
         changesPerAccount.computeIfAbsent(subscriber, s -> new ArrayList<>()).add(playlistChange);
       }
     }

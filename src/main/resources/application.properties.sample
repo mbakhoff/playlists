@@ -5,10 +5,10 @@ spring.freemarker.suffix=.ftl
 yt-apikey=
 
 spring.datasource.url=jdbc:postgresql://localhost/ypt?user=&password=
+spring.jpa.properties.hibernate.hbm2ddl.auto=validate
 
-mail.from=
-mail.transport.protocol.rfc822=smtps
-mail.smtps.auth=true
-mail.smtps.host=
-mail.smtps.user=
-mail.smtps.pass=
+spring.mail.host=
+spring.mail.username=
+spring.mail.password=
+spring.mail.protocol=smtps
+spring.mail.properties.mail.smtps.from=

@@ -1,10 +1,29 @@
 package red.sigil.playlists.entities;
 
+import javax.persistence.CascadeType;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.ManyToMany;
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
 public class Account {
 
+  @Id
+  @GeneratedValue
   private Long id;
+
   private String email;
+
   private String password;
+
+  @ManyToMany(cascade = CascadeType.ALL)
+  private Set<Playlist> playlists = new HashSet<>();
+
+  protected Account() {
+  }
 
   public Account(Long id, String email, String password) {
     this.id = id;
@@ -34,6 +53,14 @@ public class Account {
 
   public void setPassword(String password) {
     this.password = password;
+  }
+
+  public Set<Playlist> getPlaylists() {
+    return playlists;
+  }
+
+  public void setPlaylists(Set<Playlist> playlists) {
+    this.playlists = playlists;
   }
 
   @Override

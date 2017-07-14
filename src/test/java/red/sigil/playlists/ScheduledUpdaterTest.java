@@ -7,6 +7,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
+import org.springframework.data.domain.Pageable;
 import red.sigil.playlists.ScheduledUpdater.PlaylistChange;
 import red.sigil.playlists.entities.Account;
 import red.sigil.playlists.entities.Playlist;
@@ -15,9 +16,10 @@ import red.sigil.playlists.services.EmailService;
 import red.sigil.playlists.services.FreemarkerEmailFormatter;
 import red.sigil.playlists.services.PlaylistFetchService;
 import red.sigil.playlists.services.PlaylistFetchService.ItemInfo;
-import red.sigil.playlists.services.PlaylistService;
+import red.sigil.playlists.services.PlaylistRepository;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -32,7 +34,7 @@ import static org.mockito.Mockito.when;
 public class ScheduledUpdaterTest {
 
   @Mock
-  private PlaylistService playlistService;
+  private PlaylistRepository playlistRepository;
   @Mock
   private PlaylistFetchService playlistFetchService;
   @Mock
@@ -44,7 +46,7 @@ public class ScheduledUpdaterTest {
 
   @Before
   public void setUp() throws Exception {
-    scheduledUpdater = new ScheduledUpdater(playlistService, playlistFetchService, emailService, emailFormatter);
+    scheduledUpdater = new ScheduledUpdater(playlistRepository, playlistFetchService, emailService, emailFormatter);
   }
 
   @Test
@@ -54,9 +56,9 @@ public class ScheduledUpdaterTest {
     ItemInfo ii = new ItemInfo(pl.getYoutubeId(), pl.getTitle());
     Account account = new Account(0L, "testEmail", "testPassword");
 
-    when(playlistService.getPlaylistsByLastUpdate()).thenReturn(asList(pl));
-    when(playlistService.getItems(any(Playlist.class))).thenReturn(asList(item));
-    when(playlistService.findSubscribers(any(Playlist.class))).thenReturn(asList(account));
+    when(playlistRepository.findAllByOrderByLastUpdateDesc(any(Pageable.class))).thenReturn(asList(pl));
+    pl.setPlaylistItems(Collections.singleton(item));
+    pl.setAccounts(Collections.singleton(account));
     when(playlistFetchService.read(anyString())).thenReturn(ii);
     when(playlistFetchService.readItems(anyString())).thenReturn(asList());
 
@@ -78,9 +80,9 @@ public class ScheduledUpdaterTest {
     ItemInfo iiItem = new ItemInfo(item.getYoutubeId(), item.getTitle() + "Updated");
     Account account = new Account(0L, "testEmail", "testPassword");
 
-    when(playlistService.getPlaylistsByLastUpdate()).thenReturn(asList(pl));
-    when(playlistService.getItems(any(Playlist.class))).thenReturn(asList(item));
-    when(playlistService.findSubscribers(any(Playlist.class))).thenReturn(asList(account));
+    when(playlistRepository.findAllByOrderByLastUpdateDesc(any(Pageable.class))).thenReturn(asList(pl));
+    pl.setPlaylistItems(Collections.singleton(item));
+    pl.setAccounts(Collections.singleton(account));
     when(playlistFetchService.read(anyString())).thenReturn(iiPl);
     when(playlistFetchService.readItems(anyString())).thenReturn(asList(iiItem));
 
