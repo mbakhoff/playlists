@@ -9,7 +9,7 @@ import java.util.Set;
 
 public interface PlaylistRepository extends CrudRepository<Playlist, Long> {
 
-  List<Playlist> findAllByOrderByLastUpdateDesc(Pageable page);
+  List<Playlist> findAllByOrderByLastUpdateAsc(Pageable page);
 
   Playlist findByYoutubeId(String id);
 

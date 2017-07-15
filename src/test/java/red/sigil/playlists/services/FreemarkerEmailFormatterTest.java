@@ -33,17 +33,21 @@ public class FreemarkerEmailFormatterTest {
 
   @Before
   public void setupPlaylists() {
-    Playlist playlist1 = new Playlist(1L, "yid1", "title1", null);
-    PlaylistChange change1 = new PlaylistChange(playlist1, asList(
-        new PlaylistItemChange(playlist1, "item1", "old1", "new1"),
-        new PlaylistItemChange(playlist1, "item2", "old2", null)
-    ));
+    PlaylistChange change1 = new PlaylistChange(
+        new Playlist(1L, "yid1", "title1", null),
+        asList(
+            new PlaylistItemChange("item1", "old1", "new1"),
+            new PlaylistItemChange("item2", "old2", null)
+        )
+    );
 
-    Playlist playlist2 = new Playlist(2L, "yid2", "title2", null);
-    PlaylistChange change2 = new PlaylistChange(playlist2, asList(
-        new PlaylistItemChange(playlist2, "item3", "old3", "new3"),
-        new PlaylistItemChange(playlist2, "item4", "old4", null)
-    ));
+    PlaylistChange change2 = new PlaylistChange(
+        new Playlist(2L, "yid2", "title2", null),
+        asList(
+            new PlaylistItemChange("item3", "old3", "new3"),
+            new PlaylistItemChange("item4", "old4", null)
+        )
+    );
 
     changes = asList(change1, change2);
   }
@@ -54,9 +58,9 @@ public class FreemarkerEmailFormatterTest {
     assertThat(message, containsString("yid1"));
     assertThat(message, containsString("yid2"));
     assertThat(message, containsString("item1"));
+    assertThat(message, containsString("item2"));
     assertThat(message, containsString("old1"));
     assertThat(message, containsString("new1"));
-    assertThat(message, containsString("item2"));
     assertThat(message, containsString("old2"));
   }
 }

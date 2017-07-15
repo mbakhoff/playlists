@@ -39,9 +39,9 @@ public class PostgresUserService implements UserDetailsService {
   }
 
   public void register(String username, String password) {
-    if (username == null || username.trim().isEmpty() || username.length() > 128)
+    if (!isValid(username))
       throw new IllegalArgumentException("bad username");
-    if (password == null || password.trim().isEmpty() || password.length() > 128)
+    if (!isValid(password))
       throw new IllegalArgumentException("bad password");
 
     Account account = accounts.findByEmail(username.toLowerCase());
@@ -49,5 +49,9 @@ public class PostgresUserService implements UserDetailsService {
       throw new IllegalStateException("Account already exists: " + username);
 
     accounts.save(new Account(null, username.toLowerCase(), passwordEncoder.encode(password)));
+  }
+
+  private boolean isValid(String value) {
+    return value != null && !value.trim().isEmpty() && value.length() < 128;
   }
 }

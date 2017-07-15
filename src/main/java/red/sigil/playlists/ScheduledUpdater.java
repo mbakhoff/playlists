@@ -63,7 +63,7 @@ public class ScheduledUpdater {
 
   private Set<PlaylistChange> pullPlaylistChanges() throws Exception {
     Set<PlaylistChange> playlistChanges = new HashSet<>();
-    for (Playlist playlist : playlistRepository.findAllByOrderByLastUpdateDesc(new PageRequest(0, 30))) {
+    for (Playlist playlist : playlistRepository.findAllByOrderByLastUpdateAsc(new PageRequest(0, 30))) {
       if (playlist.getLastUpdate().plus(1, ChronoUnit.HOURS).isAfter(Instant.now()))
         continue;
 
@@ -96,14 +96,14 @@ public class ScheduledUpdater {
     List<PlaylistItemChange> changes = new ArrayList<>();
     all.forEach((id, pair) -> {
       if (pair.newItem == null) {
-        changes.add(new PlaylistItemChange(playlist, id, pair.oldItem.getTitle(), null));
+        changes.add(new PlaylistItemChange(id, pair.oldItem.getTitle(), null));
         playlist.getPlaylistItems().remove(pair.oldItem);
         log.debug("item deleted " + id);
       } else if (pair.oldItem == null) {
         playlist.getPlaylistItems().add(pair.newItem);
         log.debug("item added " + id);
       } else if (!Objects.equals(pair.oldItem.getTitle(), pair.newItem.getTitle())) {
-        changes.add(new PlaylistItemChange(playlist, id, pair.oldItem.getTitle(), pair.newItem.getTitle()));
+        changes.add(new PlaylistItemChange(id, pair.oldItem.getTitle(), pair.newItem.getTitle()));
         pair.oldItem.setTitle(pair.newItem.getTitle());
         log.debug("item renamed " + id);
       }
@@ -163,20 +163,14 @@ public class ScheduledUpdater {
 
   public static class PlaylistItemChange {
 
-    public final Playlist playlist;
     public final String playlistItem;
     public final String oldTitle;
     public final String newTitle;
 
-    public PlaylistItemChange(Playlist playlist, String playlistItem, String oldTitle, String newTitle) {
-      this.playlist = playlist;
+    public PlaylistItemChange(String playlistItem, String oldTitle, String newTitle) {
       this.playlistItem = playlistItem;
       this.oldTitle = oldTitle;
       this.newTitle = newTitle;
-    }
-
-    public Playlist getPlaylist() {
-      return playlist;
     }
 
     public String getPlaylistItem() {
@@ -194,8 +188,7 @@ public class ScheduledUpdater {
     @Override
     public String toString() {
       return "PlaylistItemChange{" +
-          "playlist=" + playlist +
-          ", playlistItem='" + playlistItem + '\'' +
+          "playlistItem='" + playlistItem + '\'' +
           ", oldTitle='" + oldTitle + '\'' +
           ", newTitle='" + newTitle + '\'' +
           '}';
