@@ -4,11 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import red.sigil.playlists.entities.Account;
 import red.sigil.playlists.entities.Playlist;
 
 import java.time.Instant;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,28 +28,22 @@ public class PlaylistService {
 
   public void startTracking(String email, String url) {
     String yid = parseListId(url);
-    Account account = accounts.findByEmail(email);
     Playlist playlist = playlists.findByYoutubeId(yid);
     if (playlist == null) {
       playlist = playlists.save(new Playlist(null, yid, null, Instant.EPOCH));
     }
-    account.getPlaylists().add(playlist);
+    accounts.findByEmail(email).getPlaylists().add(playlist);
     log.info("started tracking " + yid + " for " + email);
   }
 
-  public void stopTracking(String email, Set<String> toRemove) {
-    Account account = accounts.findByEmail(email);
-    Set<Playlist> playlists = account.getPlaylists();
-    for (Playlist playlist : new ArrayList<>(playlists)) {
-      if (toRemove.contains(playlist.getYoutubeId())) {
-        playlists.remove(playlist);
-        playlist.getAccounts().remove(account);
-        if (playlist.getAccounts().isEmpty()) {
-          this.playlists.delete(playlist);
-        }
-      }
+  public void stopTracking(String email, Set<String> removedIds) {
+    List<Playlist> removedPlaylists = playlists.findByYoutubeIdIn(removedIds);
+    accounts.findByEmail(email).getPlaylists().removeAll(removedPlaylists);
+    for (Playlist playlist : removedPlaylists) {
+      if (playlist.getAccounts().isEmpty())
+        playlists.delete(playlist);
     }
-    log.info("stopped tracking " + toRemove + " for " + email);
+    log.info("stopped tracking " + removedIds + " for " + email);
   }
 
   private String parseListId(String url) {

@@ -19,17 +19,19 @@ import red.sigil.playlists.services.PlaylistFetchService.ItemInfo;
 import red.sigil.playlists.services.PlaylistRepository;
 
 import java.time.Instant;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@SuppressWarnings({"unchecked", "ArraysAsListWithZeroOrOneArgument"})
+@SuppressWarnings("unchecked")
 @RunWith(MockitoJUnitRunner.class)
 public class ScheduledUpdaterTest {
 
@@ -56,16 +58,16 @@ public class ScheduledUpdaterTest {
     ItemInfo ii = new ItemInfo(pl.getYoutubeId(), pl.getTitle());
     Account account = new Account(0L, "testEmail", "testPassword");
 
-    when(playlistRepository.findAllByOrderByLastUpdateDesc(any(Pageable.class))).thenReturn(asList(pl));
-    pl.setPlaylistItems(Collections.singleton(item));
-    pl.setAccounts(Collections.singleton(account));
+    when(playlistRepository.findAllByOrderByLastUpdateDesc(any(Pageable.class))).thenReturn(listOf(pl));
+    pl.setPlaylistItems(setOf(item));
+    pl.setAccounts(setOf(account));
     when(playlistFetchService.read(anyString())).thenReturn(ii);
-    when(playlistFetchService.readItems(anyString())).thenReturn(asList());
+    when(playlistFetchService.readItems(anyString())).thenReturn(listOf());
 
     scheduledUpdater.runSyncTasks();
 
     ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
-    verify(emailFormatter, Mockito.atLeastOnce()).generateNotificationMessage(captor.capture());
+    verify(emailFormatter, Mockito.atLeastOnce()).generatePlaylistsChangedNotification(captor.capture());
     List<PlaylistChange> value = captor.getValue();
     assertEquals("video0", value.get(0).itemChanges.get(0).playlistItem);
     assertEquals("video0title", value.get(0).itemChanges.get(0).oldTitle);
@@ -80,19 +82,27 @@ public class ScheduledUpdaterTest {
     ItemInfo iiItem = new ItemInfo(item.getYoutubeId(), item.getTitle() + "Updated");
     Account account = new Account(0L, "testEmail", "testPassword");
 
-    when(playlistRepository.findAllByOrderByLastUpdateDesc(any(Pageable.class))).thenReturn(asList(pl));
-    pl.setPlaylistItems(Collections.singleton(item));
-    pl.setAccounts(Collections.singleton(account));
+    when(playlistRepository.findAllByOrderByLastUpdateDesc(any(Pageable.class))).thenReturn(listOf(pl));
+    pl.setPlaylistItems(setOf(item));
+    pl.setAccounts(setOf(account));
     when(playlistFetchService.read(anyString())).thenReturn(iiPl);
-    when(playlistFetchService.readItems(anyString())).thenReturn(asList(iiItem));
+    when(playlistFetchService.readItems(anyString())).thenReturn(listOf(iiItem));
 
     scheduledUpdater.runSyncTasks();
 
     ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
-    verify(emailFormatter, Mockito.atLeastOnce()).generateNotificationMessage(captor.capture());
+    verify(emailFormatter, Mockito.atLeastOnce()).generatePlaylistsChangedNotification(captor.capture());
     List<PlaylistChange> value = captor.getValue();
     assertEquals("video0", value.get(0).itemChanges.get(0).playlistItem);
     assertEquals("video0title", value.get(0).itemChanges.get(0).oldTitle);
     assertEquals("video0titleUpdated", value.get(0).itemChanges.get(0).newTitle);
+  }
+
+  private <T> Set<T> setOf(T... args) {
+    return new HashSet<>(Arrays.asList(args));
+  }
+
+  private <T> List<T> listOf(T... args) {
+    return new ArrayList<>(Arrays.asList(args));
   }
 }

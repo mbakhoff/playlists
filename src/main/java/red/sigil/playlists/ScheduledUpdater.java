@@ -14,9 +14,9 @@ import red.sigil.playlists.services.EmailService;
 import red.sigil.playlists.services.FreemarkerEmailFormatter;
 import red.sigil.playlists.services.PlaylistFetchService;
 import red.sigil.playlists.services.PlaylistFetchService.ItemInfo;
+import red.sigil.playlists.services.PlaylistFetchService.PlaylistNotFound;
 import red.sigil.playlists.services.PlaylistRepository;
 
-import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Component
@@ -34,99 +35,85 @@ public class ScheduledUpdater {
   private final PlaylistRepository playlistRepository;
   private final PlaylistFetchService playlistFetchService;
   private final EmailService emailService;
-  private final FreemarkerEmailFormatter emailFormatter;
+  private final FreemarkerEmailFormatter formatter;
 
   @Autowired
-  public ScheduledUpdater(PlaylistRepository playlistRepository, PlaylistFetchService playlistFetchService, EmailService emailService, FreemarkerEmailFormatter emailFormatter) {
+  public ScheduledUpdater(PlaylistRepository playlistRepository, PlaylistFetchService playlistFetchService, EmailService emailService, FreemarkerEmailFormatter formatter) {
     this.playlistRepository = playlistRepository;
     this.playlistFetchService = playlistFetchService;
     this.emailService = emailService;
-    this.emailFormatter = emailFormatter;
+    this.formatter = formatter;
   }
 
   @Transactional
   @Scheduled(fixedDelay = 60_000, initialDelay = 3000)
   public void runSyncTasks() throws Exception {
-    List<PlaylistItemChange> changes = findChangedPlaylistItems();
-    if (!changes.isEmpty()) {
-      Map<Account, List<PlaylistChange>> changesByAccount = getChangesByAccount(changes);
-      for (Map.Entry<Account, List<PlaylistChange>> entry : changesByAccount.entrySet()) {
-        String recipientEmail = entry.getKey().getEmail();
-        try {
-          log.info("sending notification to " + recipientEmail + " with " + entry.getValue().size() + " playlists");
-          String message = emailFormatter.generateNotificationMessage(entry.getValue());
-          emailService.send(recipientEmail, "Youtube tracks changed", message);
-        } catch (Exception e) {
-          log.error("failed to send notification to " + recipientEmail, e);
-        }
+    Set<PlaylistChange> changes = pullPlaylistChanges();
+    getChangesByAccount(changes).forEach((account, changesForAccount) -> {
+      String sendTo = account.getEmail();
+      try {
+        log.info("sending notification to " + sendTo + " with " + changesForAccount.size() + " playlists");
+        String message = formatter.generatePlaylistsChangedNotification(changesForAccount);
+        emailService.sendHtml(sendTo, "Youtube tracks changed", message);
+      } catch (Exception e) {
+        log.error("failed to send notification to " + sendTo, e);
       }
-    }
+    });
   }
 
-  private List<PlaylistItemChange> findChangedPlaylistItems() throws Exception {
-    List<PlaylistItemChange> changes = new ArrayList<>();
+  private Set<PlaylistChange> pullPlaylistChanges() throws Exception {
+    Set<PlaylistChange> playlistChanges = new HashSet<>();
     for (Playlist playlist : playlistRepository.findAllByOrderByLastUpdateDesc(new PageRequest(0, 30))) {
       if (playlist.getLastUpdate().plus(1, ChronoUnit.HOURS).isAfter(Instant.now()))
         continue;
 
-      ItemInfo info = playlistFetchService.read(playlist.getYoutubeId());
-      if (info == null) {
-        playlistRepository.delete(playlist);
-        log.info("deleting playlist " + playlist.getYoutubeId());
-        continue;
-      }
-
-      log.info("updating playlist " + playlist.getYoutubeId());
-      Set<PlaylistItem> oldItems = playlist.getPlaylistItems();
-      Set<PlaylistItem> newItems;
       try {
-        newItems = toSet(playlistFetchService.readItems(playlist.getYoutubeId()));
+        log.info("updating playlist " + playlist.getYoutubeId());
+        ItemInfo info = playlistFetchService.read(playlist.getYoutubeId());
+        playlist.setTitle(info.title);
+        playlist.setLastUpdate(Instant.now());
+        List<PlaylistItemChange> changeList = pullPlaylistChanges(playlist);
+        if (!changeList.isEmpty()) {
+          playlistChanges.add(new PlaylistChange(playlist, changeList));
+        }
+      } catch (PlaylistNotFound e) {
+        log.info("deleting playlist {} - deleted from remote", playlist.getYoutubeId());
+        playlistRepository.delete(playlist);
       } catch (Exception e) {
         log.error("failed to update " + playlist.getYoutubeId(), e);
-        continue;
       }
-
-      Map<String, PlaylistItem> mappedNew = new HashMap<>();
-      for (PlaylistItem newItem : newItems)
-        mappedNew.put(newItem.getYoutubeId(), newItem);
-
-      Map<String, PlaylistItem> mappedOld = new HashMap<>();
-      for (PlaylistItem oldItem : oldItems)
-        mappedOld.put(oldItem.getYoutubeId(), oldItem);
-
-      for (PlaylistItem oldItem : new ArrayList<>(oldItems)) {
-        PlaylistItem newItem = mappedNew.get(oldItem.getYoutubeId());
-        if (newItem == null) {
-          changes.add(new PlaylistItemChange(playlist, oldItem.getYoutubeId(), oldItem.getTitle(), null));
-          playlist.getPlaylistItems().remove(oldItem);
-          log.debug("item deleted " + oldItem.getYoutubeId());
-        } else if (!oldItem.getTitle().equals(newItem.getTitle())) {
-          changes.add(new PlaylistItemChange(playlist, oldItem.getYoutubeId(), oldItem.getTitle(), newItem.getTitle()));
-          oldItem.setTitle(newItem.getTitle());
-          log.debug("item renamed " + oldItem.getYoutubeId());
-        }
-      }
-      for (PlaylistItem newItem : new ArrayList<>(newItems)) {
-        PlaylistItem oldItem = mappedOld.get(newItem.getYoutubeId());
-        if (oldItem == null) {
-          playlist.getPlaylistItems().add(newItem);
-          log.debug("item added " + newItem.getYoutubeId());
-        }
-      }
-
-      playlist.setTitle(info.title);
-      playlist.setLastUpdate(Instant.now());
     }
+    return playlistChanges;
+  }
+
+  private List<PlaylistItemChange> pullPlaylistChanges(Playlist playlist) throws Exception {
+    Map<String, OldAndNew> all = new HashMap<>();
+    for (PlaylistItem item : asPlaylistItems(playlistFetchService.readItems(playlist.getYoutubeId())))
+      all.computeIfAbsent(item.getYoutubeId(), id -> new OldAndNew()).newItem = item;
+    for (PlaylistItem item : playlist.getPlaylistItems())
+      all.computeIfAbsent(item.getYoutubeId(), id -> new OldAndNew()).oldItem = item;
+
+    List<PlaylistItemChange> changes = new ArrayList<>();
+    all.forEach((id, pair) -> {
+      if (pair.newItem == null) {
+        changes.add(new PlaylistItemChange(playlist, id, pair.oldItem.getTitle(), null));
+        playlist.getPlaylistItems().remove(pair.oldItem);
+        log.debug("item deleted " + id);
+      } else if (pair.oldItem == null) {
+        playlist.getPlaylistItems().add(pair.newItem);
+        log.debug("item added " + id);
+      } else if (!Objects.equals(pair.oldItem.getTitle(), pair.newItem.getTitle())) {
+        changes.add(new PlaylistItemChange(playlist, id, pair.oldItem.getTitle(), pair.newItem.getTitle()));
+        pair.oldItem.setTitle(pair.newItem.getTitle());
+        log.debug("item renamed " + id);
+      }
+    });
     return changes;
   }
 
-  private Map<Account, List<PlaylistChange>> getChangesByAccount(List<PlaylistItemChange> changes) throws SQLException, ReflectiveOperationException {
-    Map<Playlist, PlaylistChange> changesByPlaylist = new HashMap<>();
-    for (PlaylistItemChange change : changes) {
-      changesByPlaylist.computeIfAbsent(change.playlist, PlaylistChange::new).itemChanges.add(change);
-    }
+  private Map<Account, List<PlaylistChange>> getChangesByAccount(Set<PlaylistChange> changes) {
     Map<Account, List<PlaylistChange>> changesPerAccount = new HashMap<>();
-    for (PlaylistChange playlistChange : changesByPlaylist.values()) {
+    for (PlaylistChange playlistChange : changes) {
       for (Account subscriber : playlistChange.playlist.getAccounts()) {
         changesPerAccount.computeIfAbsent(subscriber, s -> new ArrayList<>()).add(playlistChange);
       }
@@ -134,7 +121,7 @@ public class ScheduledUpdater {
     return changesPerAccount;
   }
 
-  private Set<PlaylistItem> toSet(List<ItemInfo> items) {
+  private Set<PlaylistItem> asPlaylistItems(List<ItemInfo> items) {
     Set<PlaylistItem> result = new HashSet<>();
     for (ItemInfo item : items) {
       if (item.id != null)
@@ -143,13 +130,18 @@ public class ScheduledUpdater {
     return result;
   }
 
+  private static class OldAndNew {
+    PlaylistItem oldItem, newItem;
+  }
+
   public static class PlaylistChange {
 
     public final Playlist playlist;
-    public final List<PlaylistItemChange> itemChanges = new ArrayList<>();
+    public final List<PlaylistItemChange> itemChanges;
 
-    public PlaylistChange(Playlist playlist) {
+    public PlaylistChange(Playlist playlist, List<PlaylistItemChange> itemChanges) {
       this.playlist = playlist;
+      this.itemChanges = itemChanges;
     }
 
     public Playlist getPlaylist() {

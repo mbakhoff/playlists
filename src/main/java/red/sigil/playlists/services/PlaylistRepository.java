@@ -5,6 +5,7 @@ import org.springframework.data.repository.CrudRepository;
 import red.sigil.playlists.entities.Playlist;
 
 import java.util.List;
+import java.util.Set;
 
 public interface PlaylistRepository extends CrudRepository<Playlist, Long> {
 
@@ -12,4 +13,5 @@ public interface PlaylistRepository extends CrudRepository<Playlist, Long> {
 
   Playlist findByYoutubeId(String id);
 
+  List<Playlist> findByYoutubeIdIn(Set<String> ids);
 }

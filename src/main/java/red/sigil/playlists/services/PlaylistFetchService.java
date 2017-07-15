@@ -64,7 +64,7 @@ public class PlaylistFetchService {
       JsonNode root = mapper.readTree(resp.getEntity().getContent());
       JsonNode items = root.at("/items");
       if (items.size() == 0)
-        return null;
+        throw new PlaylistNotFound(playlistId);
 
       JsonNode playlist = items.get(0);
       return new ItemInfo(
@@ -110,6 +110,12 @@ public class PlaylistFetchService {
     public ItemInfo(String id, String title) {
       this.id = id;
       this.title = title;
+    }
+  }
+
+  public static class PlaylistNotFound extends RuntimeException {
+    public PlaylistNotFound(String message) {
+      super(message);
     }
   }
 }

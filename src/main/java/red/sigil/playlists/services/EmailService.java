@@ -18,7 +18,7 @@ public class EmailService {
     this.mailSender = mailSender;
   }
 
-  public void send(String recipientEmail, String title, String message) throws Exception {
+  public void sendHtml(String recipientEmail, String title, String message) throws Exception {
     MimeMessage msg = mailSender.createMimeMessage();
     msg.setRecipients(Message.RecipientType.TO, recipientEmail);
     msg.setSubject(title);

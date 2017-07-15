@@ -25,12 +25,12 @@ public class FreemarkerEmailFormatter {
     this.cfg = cfg;
   }
 
-  public String generateNotificationMessage(List<PlaylistChange> playlistChanges) throws IOException, TemplateException {
-    Map<String, Object> root = new HashMap<>();
-    root.put("playlistChanges", playlistChanges);
+  public String generatePlaylistsChangedNotification(List<PlaylistChange> playlistChanges) throws IOException, TemplateException {
+    Map<String, Object> model = new HashMap<>();
+    model.put("playlistChanges", playlistChanges);
 
     StringWriter out = new StringWriter();
-    cfg.getTemplate("notification.ftl").process(root, out);
+    cfg.getTemplate("notification.ftl").process(model, out);
     return out.toString();
   }
 }
