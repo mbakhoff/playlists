@@ -2,6 +2,11 @@ package red.sigil.playlists.services;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.freemarker.FreeMarkerAutoConfiguration;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
 import red.sigil.playlists.ScheduledUpdater.PlaylistChange;
 import red.sigil.playlists.ScheduledUpdater.PlaylistItemChange;
 import red.sigil.playlists.entities.Playlist;
@@ -11,12 +16,20 @@ import java.util.List;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.NONE;
 
 
+@RunWith(SpringRunner.class)
+@SpringBootTest(webEnvironment = NONE, classes = {
+    FreemarkerEmailFormatter.class,
+    FreeMarkerAutoConfiguration.class
+})
 public class FreemarkerEmailFormatterTest {
 
-  private List<PlaylistChange> changes;
+  @Autowired
   private FreemarkerEmailFormatter fmt;
+
+  private List<PlaylistChange> changes;
 
   @Before
   public void setupPlaylists() {
@@ -31,12 +44,6 @@ public class FreemarkerEmailFormatterTest {
     change2.itemChanges.add(new PlaylistItemChange(playlist2, "item4", "old4", null));
 
     changes = Arrays.asList(change1, change2);
-  }
-
-  @Before
-  public void setupFormatter() throws Exception {
-    fmt = new FreemarkerEmailFormatter();
-    fmt.init();
   }
 
   @Test

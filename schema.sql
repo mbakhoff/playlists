@@ -19,9 +19,9 @@ CREATE TABLE IF NOT EXISTS playlist (
 );
 
 CREATE TABLE IF NOT EXISTS playlist_item (
-  id          BIGSERIAL PRIMARY KEY,
-  youtube_id  VARCHAR(255) NOT NULL,
-  title       VARCHAR(255) NOT NULL
+  id         BIGSERIAL PRIMARY KEY,
+  youtube_id VARCHAR(255) NOT NULL,
+  title      VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS account_playlists (
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS account_playlists (
 );
 
 CREATE TABLE IF NOT EXISTS playlist_playlist_items (
-  playlist_id  BIGINT NOT NULL REFERENCES playlist (id) ON DELETE CASCADE,
+  playlist_id       BIGINT NOT NULL REFERENCES playlist (id) ON DELETE CASCADE,
   playlist_items_id BIGINT NOT NULL REFERENCES playlist_item (id)
 );
 

@@ -9,6 +9,7 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -20,7 +21,7 @@ import java.util.List;
 @Component
 public class PlaylistFetchService {
 
-  private final PropertyService propertyService;
+  private final Environment env;
 
   private static final String PLAYLISTS =
       "https://www.googleapis.com/youtube/v3/playlists";
@@ -32,13 +33,13 @@ public class PlaylistFetchService {
   private String apiKey;
 
   @Autowired
-  public PlaylistFetchService(PropertyService propertyService) {
-    this.propertyService = propertyService;
+  public PlaylistFetchService(Environment env) {
+    this.env = env;
   }
 
   @PostConstruct
   public void init() throws Exception {
-    apiKey = propertyService.getProperty("yt-apikey");
+    apiKey = env.getProperty("yt-apikey");
     httpclient = HttpClients.createDefault();
     mapper = new ObjectMapper();
   }

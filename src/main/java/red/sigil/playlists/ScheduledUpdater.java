@@ -152,6 +152,14 @@ public class ScheduledUpdater {
       this.playlist = playlist;
     }
 
+    public Playlist getPlaylist() {
+      return playlist;
+    }
+
+    public List<PlaylistItemChange> getItemChanges() {
+      return itemChanges;
+    }
+
     @Override
     public String toString() {
       return "PlaylistChange{" +
@@ -173,6 +181,22 @@ public class ScheduledUpdater {
       this.playlistItem = playlistItem;
       this.oldTitle = oldTitle;
       this.newTitle = newTitle;
+    }
+
+    public Playlist getPlaylist() {
+      return playlist;
+    }
+
+    public String getPlaylistItem() {
+      return playlistItem;
+    }
+
+    public String getOldTitle() {
+      return oldTitle;
+    }
+
+    public String getNewTitle() {
+      return newTitle;
     }
 
     @Override

@@ -32,16 +32,16 @@ public class PostgresUserService implements UserDetailsService {
 
   @Override
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-    String password = accounts.findByEmail(username.toLowerCase()).getPassword();
-    if (password == null)
+    Account account = accounts.findByEmail(username.toLowerCase());
+    if (account == null)
       throw new UsernameNotFoundException(username);
-    return new User(username, password, DEFAULT_AUTHORITY);
+    return new User(username, account.getPassword(), DEFAULT_AUTHORITY);
   }
 
   public void register(String username, String password) {
-    if (username == null || username.isEmpty() || username.length() > 128)
+    if (username == null || username.trim().isEmpty() || username.length() > 128)
       throw new IllegalArgumentException("bad username");
-    if (password == null || password.isEmpty() || password.length() > 128)
+    if (password == null || password.trim().isEmpty() || password.length() > 128)
       throw new IllegalArgumentException("bad password");
 
     Account account = accounts.findByEmail(username.toLowerCase());
