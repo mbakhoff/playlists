@@ -1,47 +1,50 @@
 package red.sigil.playlists.services;
 
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.freemarker.FreeMarkerAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.junit4.SpringRunner;
-import red.sigil.playlists.ScheduledUpdater.PlaylistChange;
-import red.sigil.playlists.ScheduledUpdater.PlaylistItemChange;
 import red.sigil.playlists.entities.Playlist;
+import red.sigil.playlists.services.PlaylistService.PlaylistItemChange;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.NONE;
 
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = NONE, classes = {
-    FreemarkerEmailFormatter.class,
-    FreeMarkerAutoConfiguration.class
+    FreeMarkerAutoConfiguration.class,
+    PlaylistNotificationService.class,
+    PlaylistNotificationServiceTest.MockSenderConfig.class
 })
-public class FreemarkerEmailFormatterTest {
+public class PlaylistNotificationServiceTest {
 
   @Autowired
-  private FreemarkerEmailFormatter fmt;
+  private PlaylistNotificationService service;
 
-  private List<PlaylistChange> changes;
-
-  @Before
-  public void setupPlaylists() {
-    PlaylistChange change1 = new PlaylistChange(
+  @Test
+  public void testFormatting() throws Exception {
+    Map<Playlist, List<PlaylistItemChange>> changes = new HashMap<>();
+    changes.put(
         new Playlist(1L, "yid1", "title1", null),
         asList(
             new PlaylistItemChange("item1", "old1", "new1"),
             new PlaylistItemChange("item2", "old2", null)
         )
     );
-
-    PlaylistChange change2 = new PlaylistChange(
+    changes.put(
         new Playlist(2L, "yid2", "title2", null),
         asList(
             new PlaylistItemChange("item3", "old3", "new3"),
@@ -49,12 +52,7 @@ public class FreemarkerEmailFormatterTest {
         )
     );
 
-    changes = asList(change1, change2);
-  }
-
-  @Test
-  public void testFormatting() throws Exception {
-    String message = fmt.generatePlaylistsChangedNotification(changes);
+    String message = service.generateNotification(changes);
     assertThat(message, containsString("yid1"));
     assertThat(message, containsString("yid2"));
     assertThat(message, containsString("item1"));
@@ -62,5 +60,13 @@ public class FreemarkerEmailFormatterTest {
     assertThat(message, containsString("old1"));
     assertThat(message, containsString("new1"));
     assertThat(message, containsString("old2"));
+  }
+
+  @Configuration
+  static class MockSenderConfig {
+    @Bean
+    JavaMailSender mailSender() {
+      return mock(JavaMailSender.class);
+    }
   }
 }

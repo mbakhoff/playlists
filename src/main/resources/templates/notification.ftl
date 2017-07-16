@@ -1,14 +1,14 @@
 <html>
 <body>
   <h1>Playlists have changed</h1>
-  <#list playlistChanges as playlistChange>
+  <#list playlistChanges as playlist, itemChanges>
     <h2>
-      <a href="https://www.youtube.com/playlist?list=${playlistChange.playlist.youtubeId}">
-        ${playlistChange.playlist.title?html}
+      <a href="https://www.youtube.com/playlist?list=${playlist.youtubeId}">
+        ${playlist.title?html}
       </a>
     </h2>
     <ol>
-      <#list playlistChange.itemChanges as item>
+      <#list itemChanges as item>
         <#if item.newTitle??>
           <li>
             Renamed <a href="https://www.youtube.com/watch?v=${item.playlistItem}">${item.oldTitle?html}</a>
