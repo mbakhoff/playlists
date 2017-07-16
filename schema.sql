@@ -1,25 +1,27 @@
+DROP SEQUENCE IF EXISTS hibernate_sequence CASCADE;
 DROP TABLE IF EXISTS account CASCADE;
 DROP TABLE IF EXISTS playlist CASCADE;
-DROP TABLE IF EXISTS playlist_items CASCADE;
+DROP TABLE IF EXISTS playlist_item CASCADE;
 DROP TABLE IF EXISTS account_playlists CASCADE;
+DROP TABLE IF EXISTS playlist_playlist_items CASCADE;
 
 CREATE SEQUENCE hibernate_sequence;
 
 CREATE TABLE IF NOT EXISTS account (
-  id       BIGSERIAL PRIMARY KEY,
+  id       BIGINT PRIMARY KEY,
   email    VARCHAR(255) UNIQUE NOT NULL,
   password VARCHAR(255)        NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS playlist (
-  id          BIGSERIAL PRIMARY KEY,
+  id          BIGINT PRIMARY KEY,
   youtube_id  VARCHAR(255) UNIQUE NOT NULL,
   title       VARCHAR(255),
   last_update TIMESTAMP WITH TIME ZONE
 );
 
 CREATE TABLE IF NOT EXISTS playlist_item (
-  id         BIGSERIAL PRIMARY KEY,
+  id         BIGINT PRIMARY KEY,
   youtube_id VARCHAR(255) NOT NULL,
   title      VARCHAR(255) NOT NULL
 );
