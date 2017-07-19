@@ -3,7 +3,7 @@ package red.sigil.playlists.services;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.freemarker.FreeMarkerAutoConfiguration;
+import org.springframework.boot.autoconfigure.thymeleaf.ThymeleafAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +25,7 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = NONE, classes = {
-    FreeMarkerAutoConfiguration.class,
+    ThymeleafAutoConfiguration.class,
     PlaylistNotificationService.class,
     PlaylistNotificationServiceTest.MockSenderConfig.class
 })

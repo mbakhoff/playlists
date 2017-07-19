@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Login</title>
+  <link rel="stylesheet" th:href="@{/assets/bootstrap.css}">
+  <link rel="stylesheet" th:href="@{/assets/login.css}">
+</head>
+<body>
+
+<div id="application" class="container">
+  <h1>Youtube playlist tracker</h1>
+  <form th:action="@{/auth/login}" method="post">
+    <p th:if="${param.error} != null">
+      Invalid username and password.
+    </p>
+    <p th:if="${param.logout} != null">
+      You have been logged out.
+    </p>
+    <p>
+      <label for="username">E-mail</label>
+      <input type="text" id="username" name="username"/>
+    </p>
+    <p>
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password"/>
+    </p>
+
+    <button type="submit" th:formaction="@{/auth/login}" class="btn btn-primary">Log in</button>
+    <button type="submit" th:formaction="@{/auth/signup}" class="btn">Sign up</button>
+  </form>
+</div>
+
+</body>
+</html>

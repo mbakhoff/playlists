@@ -1,11 +1,11 @@
 package red.sigil.playlists.services;
 
-import freemarker.template.Configuration;
-import freemarker.template.TemplateException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring4.SpringTemplateEngine;
 import red.sigil.playlists.entities.Account;
 import red.sigil.playlists.entities.Playlist;
 import red.sigil.playlists.services.PlaylistService.PlaylistItemChange;
@@ -13,9 +13,7 @@ import red.sigil.playlists.services.PlaylistService.PlaylistItemChange;
 import javax.mail.Message;
 import javax.mail.internet.MimeMessage;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,11 +23,11 @@ public class PlaylistNotificationService {
   private static final Logger log = LoggerFactory.getLogger(PlaylistNotificationService.class);
 
   private final JavaMailSender mailSender;
-  private final Configuration cfg;
+  private final SpringTemplateEngine engine;
 
-  public PlaylistNotificationService(JavaMailSender mailSender, Configuration cfg) {
+  public PlaylistNotificationService(JavaMailSender mailSender, SpringTemplateEngine engine) {
     this.mailSender = mailSender;
-    this.cfg = cfg;
+    this.engine = engine;
   }
 
   public void sendChangeNotification(Account account, Map<Playlist, List<PlaylistItemChange>> changes) {
@@ -51,12 +49,9 @@ public class PlaylistNotificationService {
     mailSender.send(msg);
   }
 
-  String generateNotification(Map<Playlist, List<PlaylistItemChange>> playlistChanges) throws IOException, TemplateException {
-    Map<String, Object> model = new HashMap<>();
-    model.put("playlistChanges", playlistChanges);
-
-    StringWriter out = new StringWriter();
-    cfg.getTemplate("notification.ftl").process(model, out);
-    return out.toString();
+  String generateNotification(Map<Playlist, List<PlaylistItemChange>> playlistChanges) throws IOException {
+    Context model = new Context();
+    model.setVariable("playlistChanges", playlistChanges);
+    return engine.process("notification", model);
   }
 }

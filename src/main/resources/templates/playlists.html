@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Playlist tracker</title>
+  <link rel="stylesheet" th:href="@{/assets/bootstrap.css}">
+  <link rel="stylesheet" th:href="@{/assets/playlists.css}">
+</head>
+<body>
+
+<div id="application" class="container">
+  <h1>Your playlists</h1>
+  <div>Notifications are sent to [[${email}]]</div>
+  <form th:action="@{/logout}" method="post">
+    <button class="btn btn-default">Log out</button>
+  </form>
+
+  <h2>Add a playlist</h2>
+  <form th:action="@{/start}" method="post">
+    <div class="form-group">
+      <label for="url">Playlist URL</label>
+      <input type="text" class="form-control" id="url" name="url" placeholder="e.g. https://www.youtube.com/playlist?list=PL7USMo--IcSi5p44jTZTezqS3Z-MEC6DU">
+    </div>
+    <button class="btn btn-default">Start tracking</button>
+  </form>
+  <h2>My playlists</h2>
+  <form th:action="@{/stop}" method="post">
+    <div id="playlists">
+      <div class="checkbox" th:each="playlist : ${playlists}">
+        <label>
+          <th:block th:if="playlist.title != null">
+            <input type="checkbox" name="remove" th:value="${playlist.youtubeId}">
+            [[${playlist.title}]] (Last synchronized at [[${playlist.lastUpdate}]])
+            <a th:href="@{https://www.youtube.com/playlist(list=${playlist.youtubeId})}">
+              <img th:src="@{/assets/yt.png}" alt="to playlist"/>
+            </a>
+          </th:block>
+          <th:block th:if="playlist.title == null">
+            <input type="checkbox" name="remove" value="${playlist.youtubeId}">
+            [[${playlist.youtubeId}]] (Syncronization pending)
+          </th:block>
+        </label>
+      </div>
+      <button class="btn btn-default">Stop tracking</button>
+    </div>
+  </form>
+
+</div>
+
+</body>
+</html>
