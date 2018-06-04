@@ -4,7 +4,6 @@ server.tomcat.internal-proxies=127.0.0.1|0:0:0:0:0:0:0:1
 yt-apikey=
 
 spring.datasource.url=jdbc:postgresql://localhost/ypt?user=&password=
-spring.jpa.properties.hibernate.hbm2ddl.auto=validate
 
 spring.mail.host=
 spring.mail.username=

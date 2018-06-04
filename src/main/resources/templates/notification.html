@@ -11,12 +11,12 @@
     </h2>
     <ol>
       <th:block th:each="item : ${entry.value}">
-        <li th:if="item.newTitle != null">
+        <li th:if="${item.newTitle} != null">
           Renamed <a th:href="@{https://www.youtube.com/watch(v=${item.playlistItem})}" th:text="${item.oldTitle}"></a>
           <br/>
           New name is [[${item.newTitle}]]
         </li>
-        <li th:if="item.newTitle == null">
+        <li th:if="${item.newTitle} == null">
           Deleted <a th:href="@{https://www.youtube.com/watch(v=${item.playlistItem})}" th:text="${item.oldTitle}"></a>
         </li>
       </th:block>

@@ -1,21 +1,11 @@
 package red.sigil.playlists.entities;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-
-@Entity
 public class PlaylistItem {
 
-  @Id
-  @GeneratedValue
   private Long id;
   private String youtubeId;
   private String title;
   
-  protected PlaylistItem() {
-  }
-
   public PlaylistItem(Long id, String youtubeId, String title) {
     this.id = id;
     this.youtubeId = youtubeId;

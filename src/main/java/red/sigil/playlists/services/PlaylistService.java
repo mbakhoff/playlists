@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import red.sigil.playlists.entities.Account;
 import red.sigil.playlists.entities.Playlist;
 import red.sigil.playlists.entities.PlaylistItem;
 
@@ -39,18 +40,25 @@ public class PlaylistService {
     String yid = parseListId(url);
     Playlist playlist = playlists.findByYoutubeId(yid);
     if (playlist == null) {
-      playlist = playlists.save(new Playlist(null, yid, null, Instant.EPOCH));
+      playlist = new Playlist(null, yid, null, null);
+      playlists.create(playlist);
     }
-    accounts.findByEmail(email).getPlaylists().add(playlist);
+    Account account = accounts.findByEmail(email);
+    playlists.addToAccount(account.getId(), playlist.getId());
     log.info("started tracking " + yid + " for " + email);
   }
 
   public void stopTracking(String email, Set<String> removedIds) {
     List<Playlist> removedPlaylists = playlists.findByYoutubeIdIn(removedIds);
-    accounts.findByEmail(email).getPlaylists().removeAll(removedPlaylists);
+    Account account = accounts.findByEmail(email);
+    for (Playlist removedPlaylist : removedPlaylists) {
+      playlists.removeFromAccount(account.getId(), removedPlaylist.getId());
+    }
     for (Playlist playlist : removedPlaylists) {
-      if (playlist.getAccounts().isEmpty())
-        playlists.delete(playlist);
+      if (accounts.findByPlaylist(playlist.getId()).isEmpty()) {
+        log.info("stopped syncing {} - no users request it", playlist.getYoutubeId());
+        deletePlaylist(playlist);
+      }
     }
     log.info("stopped tracking " + removedIds + " for " + email);
   }
@@ -61,35 +69,66 @@ public class PlaylistService {
       PlaylistFetchService.ItemInfo info = playlistFetchService.read(playlist.getYoutubeId());
       playlist.setTitle(info.title);
       playlist.setLastUpdate(Instant.now());
+      playlists.update(playlist);
       return pullPlaylistChanges(playlist);
     } catch (PlaylistFetchService.PlaylistNotFound e) {
       log.info("deleting playlist {} - deleted from remote", playlist.getYoutubeId());
-      playlists.delete(playlist);
+      deletePlaylist(playlist);
       return Collections.emptyList();
     }
+  }
+
+  private void deletePlaylist(Playlist playlist) {
+    List<PlaylistItem> items = playlists.findItemsByPlaylist(playlist.getId());
+    for (PlaylistItem item : items) {
+      playlists.removeFromPlaylist(playlist.getId(), item.getId());
+      log.info("removed item {} from {}", item.getYoutubeId(), playlist.getYoutubeId());
+    }
+    for (PlaylistItem item : items) {
+      if (playlists.findPlaylistsByItem(item.getId()).isEmpty()) {
+        log.info("dropping track {} - containing playlists deleted", item.getYoutubeId());
+        playlists.deleteItem(item.getId());
+      }
+    }
+    playlists.deletePlaylist(playlist.getId());
   }
 
   private List<PlaylistItemChange> pullPlaylistChanges(Playlist playlist) throws Exception {
     Map<String, OldAndNew> all = new HashMap<>();
     for (PlaylistItem item : asPlaylistItems(playlistFetchService.readItems(playlist.getYoutubeId())))
       all.computeIfAbsent(item.getYoutubeId(), id -> new OldAndNew()).newItem = item;
-    for (PlaylistItem item : playlist.getPlaylistItems())
+    for (PlaylistItem item : playlists.findItemsByPlaylist(playlist.getId()))
       all.computeIfAbsent(item.getYoutubeId(), id -> new OldAndNew()).oldItem = item;
 
     List<PlaylistItemChange> changes = new ArrayList<>();
     all.forEach((id, pair) -> {
       if (pair.newItem == null) {
         changes.add(new PlaylistItemChange(id, pair.oldItem.getTitle(), null));
-        playlist.getPlaylistItems().remove(pair.oldItem);
-        log.debug("item deleted " + id);
+        playlists.removeFromPlaylist(playlist.getId(), pair.oldItem.getId());
+        log.info("removed item {} from {}", pair.oldItem.getYoutubeId(), playlist.getYoutubeId());
+        if (playlists.findPlaylistsByItem(pair.oldItem.getId()).isEmpty()) {
+          log.info("dropping track {} - last synced playlist removed it", pair.oldItem.getYoutubeId());
+          playlists.deleteItem(pair.oldItem.getId());
+        }
       } else if (pair.oldItem == null) {
         changes.add(new PlaylistItemChange(id, null, pair.newItem.getTitle()));
-        playlist.getPlaylistItems().add(pair.newItem);
-        log.debug("item added " + id);
+        PlaylistItem item = playlists.findItemByYoutubeId(pair.newItem.getYoutubeId());
+        if (item == null) {
+          playlists.create(pair.newItem);
+          item = pair.newItem;
+          log.info("initialized item {}", item.getYoutubeId());
+        } else if (!Objects.equals(item.getTitle(), pair.newItem.getTitle())) {
+          item.setTitle(pair.newItem.getTitle());
+          playlists.update(item);
+          log.info("updated item {}", item.getYoutubeId());
+        }
+        playlists.addToPlaylist(playlist.getId(), item.getId());
+        log.info("added item {} to {}", item.getYoutubeId(), playlist.getYoutubeId());
       } else if (!Objects.equals(pair.oldItem.getTitle(), pair.newItem.getTitle())) {
         changes.add(new PlaylistItemChange(id, pair.oldItem.getTitle(), pair.newItem.getTitle()));
         pair.oldItem.setTitle(pair.newItem.getTitle());
-        log.debug("item renamed " + id);
+        playlists.update(pair.oldItem);
+        log.info("updated item {}", pair.oldItem.getYoutubeId());
       }
     });
     return changes;

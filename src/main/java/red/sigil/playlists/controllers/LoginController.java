@@ -3,10 +3,10 @@ package red.sigil.playlists.controllers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import red.sigil.playlists.services.PostgresUserService;
+import red.sigil.playlists.services.RegisterableUserService;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -15,19 +15,19 @@ import javax.servlet.http.HttpServletRequest;
 @Transactional
 public class LoginController {
 
-  private final PostgresUserService userService;
+  private final RegisterableUserService userService;
 
   @Autowired
-  public LoginController(PostgresUserService userService) {
+  public LoginController(RegisterableUserService userService) {
     this.userService = userService;
   }
 
-  @RequestMapping(path = "/auth/login", method = RequestMethod.GET)
+  @GetMapping("/auth/login")
   public String renderLogin() {
     return "login";
   }
 
-  @RequestMapping(path = "/auth/signup", method = RequestMethod.POST)
+  @PostMapping("/auth/signup")
   public String processSignup(HttpServletRequest request,
                               @RequestParam("username") String username,
                               @RequestParam("password") String password) throws ServletException {
