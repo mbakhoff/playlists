@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@Transactional(rollbackFor = Throwable.class)
 public class ScheduledUpdater {
 
   private static final Logger log = LoggerFactory.getLogger(ScheduledUpdater.class);
@@ -28,7 +29,6 @@ public class ScheduledUpdater {
   }
 
   @Scheduled(fixedDelay = 60_000, initialDelay = 3000)
-  @Transactional
   public void synchronize() throws Exception {
     Map<Account, Map<Playlist, List<PlaylistItemChange>>> changesByAccount = playlistService.update();
     changesByAccount.forEach((account, changes) -> {
@@ -42,7 +42,6 @@ public class ScheduledUpdater {
   }
 
   @Scheduled(fixedDelay = 600_000, initialDelay = 10_000)
-  @Transactional
   public void cleanup() {
     playlistService.removeOrphans();
   }

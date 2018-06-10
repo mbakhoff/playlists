@@ -1,6 +1,5 @@
 package red.sigil.playlists.services;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
@@ -15,7 +14,7 @@ import java.util.Collections;
 import java.util.Set;
 
 @Component
-@Transactional
+@Transactional(rollbackFor = Throwable.class)
 public class PostgresUserService implements RegisterableUserService {
 
   private static final Set<GrantedAuthority> DEFAULT_AUTHORITY = Collections.singleton(

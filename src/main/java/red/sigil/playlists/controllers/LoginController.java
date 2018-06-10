@@ -15,7 +15,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 
 @Controller
-@Transactional
+@Transactional(rollbackFor = Throwable.class)
 public class LoginController {
 
   private final RegisterableUserService userService;

@@ -21,7 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Controller
-@Transactional
+@Transactional(rollbackFor = Throwable.class)
 public class PlaylistsController {
 
   private final AccountRepository accountRepository;
