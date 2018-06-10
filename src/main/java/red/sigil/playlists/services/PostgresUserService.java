@@ -9,7 +9,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import red.sigil.playlists.entities.Account;
+import red.sigil.playlists.model.Account;
 
 import java.util.Collections;
 import java.util.Set;
@@ -19,13 +19,12 @@ import java.util.Set;
 public class PostgresUserService implements RegisterableUserService {
 
   private static final Set<GrantedAuthority> DEFAULT_AUTHORITY = Collections.singleton(
-      new SimpleGrantedAuthority("USER")
+      new SimpleGrantedAuthority("ROLE_USER")
   );
 
   private final AccountRepository accounts;
   private final PasswordEncoder passwordEncoder;
 
-  @Autowired
   public PostgresUserService(AccountRepository accounts, PasswordEncoder passwordEncoder) {
     this.accounts = accounts;
     this.passwordEncoder = passwordEncoder;

@@ -10,14 +10,15 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import red.sigil.playlists.entities.Account;
-import red.sigil.playlists.entities.Playlist;
+import red.sigil.playlists.model.Account;
+import red.sigil.playlists.model.Playlist;
 import red.sigil.playlists.services.AccountRepository;
 import red.sigil.playlists.services.PlaylistRepository;
 import red.sigil.playlists.services.PlaylistService;
 
-import java.util.HashSet;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Controller
 @Transactional
@@ -35,7 +36,7 @@ public class PlaylistsController {
   }
 
   @GetMapping("/")
-  public String getOverview(@AuthenticationPrincipal User user, ModelMap model) throws Exception {
+  public String getOverview(@AuthenticationPrincipal User user, ModelMap model) {
     Account account = accountRepository.findByEmail(user.getUsername());
     List<Playlist> playlists = playlistRepository.findAllByAccount(account.getId());
     model.addAttribute("email", user.getUsername());
@@ -44,17 +45,28 @@ public class PlaylistsController {
   }
 
   @PostMapping("/start")
-  public String startTracking(@AuthenticationPrincipal User user, @RequestParam("url") String url, ModelMap model) throws Exception {
-    service.startTracking(user.getUsername(), url);
+  public String startTracking(@AuthenticationPrincipal User user, @RequestParam("url") String url) {
+    service.startTracking(user.getUsername(), parseListId(url));
     return "redirect:/";
   }
 
   @PostMapping("/stop")
-  public String stopTracking(@AuthenticationPrincipal User user, @RequestParam MultiValueMap<String, String> params, ModelMap model) throws Exception {
+  public String stopTracking(@AuthenticationPrincipal User user, @RequestParam MultiValueMap<String, String> params) {
     List<String> ids = params.get("remove");
     if (ids != null) {
-      service.stopTracking(user.getUsername(), new HashSet<>(ids));
+      for (String id : ids) {
+        service.stopTracking(user.getUsername(), id);
+      }
     }
     return "redirect:/";
+  }
+
+  private String parseListId(String url) {
+    // e.g. https://www.youtube.com/playlist?list=PL7USMo--IcSi5p44jTZTezqS3Z-MEC6DU
+    Matcher matcher = Pattern.compile(".*[?&]list=([A-Za-z0-9\\-_]+).*").matcher(url);
+    if (matcher.matches()) {
+      return matcher.group(1);
+    }
+    throw new IllegalArgumentException(url);
   }
 }

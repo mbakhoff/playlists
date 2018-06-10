@@ -1,4 +1,6 @@
-package red.sigil.playlists.entities;
+package red.sigil.playlists.model;
+
+import java.util.Objects;
 
 public class Account {
 
@@ -45,12 +47,12 @@ public class Account {
     if (o == null || getClass() != o.getClass())
       return false;
 
-    Account account = (Account) o;
-    return email != null ? email.equals(account.email) : account.email == null;
+    Account other = (Account) o;
+    return Objects.equals(email, other.email);
   }
 
   @Override
   public int hashCode() {
-    return email != null ? email.hashCode() : 0;
+    return Objects.hashCode(email);
   }
 }

@@ -1,14 +1,12 @@
 package red.sigil.playlists.services;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring5.SpringTemplateEngine;
-import red.sigil.playlists.entities.Account;
-import red.sigil.playlists.entities.Playlist;
-import red.sigil.playlists.services.PlaylistService.PlaylistItemChange;
+import red.sigil.playlists.model.Account;
+import red.sigil.playlists.model.Playlist;
+import red.sigil.playlists.model.PlaylistItemChange;
 
 import javax.mail.Message;
 import javax.mail.internet.MimeMessage;
@@ -20,8 +18,6 @@ import java.util.Map;
 @Component
 public class PlaylistNotificationService {
 
-  private static final Logger log = LoggerFactory.getLogger(PlaylistNotificationService.class);
-
   private final JavaMailSender mailSender;
   private final SpringTemplateEngine engine;
 
@@ -30,14 +26,8 @@ public class PlaylistNotificationService {
     this.engine = engine;
   }
 
-  public void sendChangeNotification(Account account, Map<Playlist, List<PlaylistItemChange>> changes) {
-    String sendTo = account.getEmail();
-    try {
-      log.info("sending notification to " + sendTo + " with " + changes.size() + " playlists");
-      sendHtml(sendTo, generateNotification(changes));
-    } catch (Exception e) {
-      log.error("failed to send notification to " + sendTo, e);
-    }
+  public void sendChangeNotification(Account account, Map<Playlist, List<PlaylistItemChange>> changes) throws Exception {
+    sendHtml(account.getEmail(), generateNotification(changes));
   }
 
   private void sendHtml(String recipientEmail, String message) throws Exception {
@@ -49,7 +39,7 @@ public class PlaylistNotificationService {
     mailSender.send(msg);
   }
 
-  String generateNotification(Map<Playlist, List<PlaylistItemChange>> playlistChanges) throws IOException {
+  private String generateNotification(Map<Playlist, List<PlaylistItemChange>> playlistChanges) throws IOException {
     Context model = new Context();
     model.setVariable("playlistChanges", playlistChanges);
     return engine.process("notification", model);

@@ -15,9 +15,9 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
-import red.sigil.playlists.entities.Account;
-import red.sigil.playlists.entities.Playlist;
-import red.sigil.playlists.entities.PlaylistItem;
+import red.sigil.playlists.model.Account;
+import red.sigil.playlists.model.Playlist;
+import red.sigil.playlists.model.PlaylistItem;
 import red.sigil.playlists.jdbi.InstantArgumentFactory;
 import red.sigil.playlists.jdbi.InstantColumnMapper;
 import red.sigil.playlists.jdbi.TransactionAwareJdbiAttachment;
@@ -35,7 +35,7 @@ import static org.springframework.security.web.header.writers.ReferrerPolicyHead
 @EnableScheduling
 public class Boot {
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) {
     SpringApplication.run(Boot.class, args);
   }
 

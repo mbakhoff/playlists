@@ -1,15 +1,20 @@
-package red.sigil.playlists.entities;
+package red.sigil.playlists.model;
 
-public class PlaylistItem {
+import java.time.Instant;
+import java.util.Objects;
+
+public class Playlist {
 
   private Long id;
   private String youtubeId;
   private String title;
-  
-  public PlaylistItem(Long id, String youtubeId, String title) {
+  private Instant lastUpdate;
+
+  public Playlist(Long id, String youtubeId, String title, Instant lastUpdate) {
     this.id = id;
     this.youtubeId = youtubeId;
     this.title = title;
+    this.lastUpdate = lastUpdate;
   }
 
   public Long getId() {
@@ -36,18 +41,27 @@ public class PlaylistItem {
     this.title = title;
   }
 
+  public Instant getLastUpdate() {
+    return lastUpdate;
+  }
+
+  public void setLastUpdate(Instant lastUpdate) {
+    this.lastUpdate = lastUpdate;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o)
       return true;
     if (o == null || getClass() != o.getClass())
       return false;
-    PlaylistItem that = (PlaylistItem) o;
-    return youtubeId != null ? youtubeId.equals(that.youtubeId) : that.youtubeId == null;
+
+    Playlist other = (Playlist) o;
+    return Objects.equals(youtubeId, other.youtubeId);
   }
 
   @Override
   public int hashCode() {
-    return youtubeId != null ? youtubeId.hashCode() : 0;
+    return Objects.hashCode(youtubeId);
   }
 }

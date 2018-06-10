@@ -2,7 +2,7 @@ package red.sigil.playlists.services;
 
 import org.jdbi.v3.sqlobject.SqlObject;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
-import red.sigil.playlists.entities.Account;
+import red.sigil.playlists.model.Account;
 
 import java.util.List;
 

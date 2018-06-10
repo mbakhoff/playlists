@@ -4,21 +4,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import red.sigil.playlists.entities.Account;
-import red.sigil.playlists.entities.Playlist;
-import red.sigil.playlists.entities.PlaylistItem;
+import red.sigil.playlists.model.Account;
+import red.sigil.playlists.model.Playlist;
+import red.sigil.playlists.model.PlaylistItem;
+import red.sigil.playlists.model.PlaylistItemChange;
+import red.sigil.playlists.services.PlaylistFetchService.ItemInfo;
+import red.sigil.playlists.services.PlaylistFetchService.PlaylistNotFound;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import static red.sigil.playlists.utils.CollectionHelper.toMap;
 
 @Component
 public class PlaylistService {
@@ -29,15 +30,13 @@ public class PlaylistService {
   private final AccountRepository accounts;
   private final PlaylistFetchService playlistFetchService;
 
-  @Autowired
   public PlaylistService(PlaylistRepository playlists, AccountRepository accounts, PlaylistFetchService playlistFetchService) {
     this.playlists = playlists;
     this.accounts = accounts;
     this.playlistFetchService = playlistFetchService;
   }
 
-  public void startTracking(String email, String url) {
-    String yid = parseListId(url);
+  public void startTracking(String email, String yid) {
     Playlist playlist = playlists.findByYoutubeId(yid);
     if (playlist == null) {
       playlist = new Playlist(null, yid, null, null);
@@ -48,145 +47,82 @@ public class PlaylistService {
     log.info("started tracking " + yid + " for " + email);
   }
 
-  public void stopTracking(String email, Set<String> removedIds) {
-    List<Playlist> removedPlaylists = playlists.findByYoutubeIdIn(removedIds);
+  public void stopTracking(String email, String yid) {
+    Playlist playlist = playlists.findByYoutubeId(yid);
     Account account = accounts.findByEmail(email);
-    for (Playlist removedPlaylist : removedPlaylists) {
-      playlists.removeFromAccount(account.getId(), removedPlaylist.getId());
-    }
-    for (Playlist playlist : removedPlaylists) {
-      if (accounts.findByPlaylist(playlist.getId()).isEmpty()) {
-        log.info("stopped syncing {} - no users request it", playlist.getYoutubeId());
-        deletePlaylist(playlist);
-      }
-    }
-    log.info("stopped tracking " + removedIds + " for " + email);
+    playlists.removeFromAccount(account.getId(), playlist.getId());
+    log.info("stopped tracking " + yid + " for " + email);
   }
 
-  public List<PlaylistItemChange> findPlaylistChanges(Playlist playlist) throws Exception {
-    try {
+  public void removeOrphans() {
+    int count = playlists.removePlaylistOrphans();
+    log.info("removed orphaned playlists: " + count);
+  }
+
+  public Map<Account, Map<Playlist, List<PlaylistItemChange>>> update() throws Exception {
+    return getChangesByAccount(checkRecentPlaylistChanges());
+  }
+
+  private Map<Playlist, List<PlaylistItemChange>> checkRecentPlaylistChanges() throws Exception {
+    List<Playlist> stale = playlists.findAllByOrderByLastUpdateAsc(10);
+    stale.removeIf(p -> p.getLastUpdate() != null && p.getLastUpdate().plus(1, ChronoUnit.HOURS).isAfter(Instant.now()));
+
+    for (Playlist playlist : new ArrayList<>(stale)) {
       log.info("updating playlist " + playlist.getYoutubeId());
-      PlaylistFetchService.ItemInfo info = playlistFetchService.read(playlist.getYoutubeId());
-      playlist.setTitle(info.title);
+      try {
+        ItemInfo info = playlistFetchService.read(playlist.getYoutubeId());
+        playlist.setTitle(info.title);
+      } catch (PlaylistNotFound e) {
+        log.info("playlist unavailable: " + playlist.getYoutubeId());
+        playlist.setTitle(null);
+        stale.remove(playlist);
+      }
       playlist.setLastUpdate(Instant.now());
       playlists.update(playlist);
-      return pullPlaylistChanges(playlist);
-    } catch (PlaylistFetchService.PlaylistNotFound e) {
-      log.info("deleting playlist {} - deleted from remote", playlist.getYoutubeId());
-      deletePlaylist(playlist);
-      return Collections.emptyList();
     }
+
+    Map<Playlist, List<PlaylistItemChange>> allChanges = new HashMap<>();
+    for (Playlist playlist : stale) {
+      allChanges.put(playlist, doItemChanges(playlist));
+    }
+    return allChanges;
   }
 
-  private void deletePlaylist(Playlist playlist) {
-    List<PlaylistItem> items = playlists.findItemsByPlaylist(playlist.getId());
-    for (PlaylistItem item : items) {
-      playlists.removeFromPlaylist(playlist.getId(), item.getId());
-      log.info("removed item {} from {}", item.getYoutubeId(), playlist.getYoutubeId());
-    }
-    for (PlaylistItem item : items) {
-      if (playlists.findPlaylistsByItem(item.getId()).isEmpty()) {
-        log.info("dropping track {} - containing playlists deleted", item.getYoutubeId());
-        playlists.deleteItem(item.getId());
-      }
-    }
-    playlists.deletePlaylist(playlist.getId());
-  }
-
-  private List<PlaylistItemChange> pullPlaylistChanges(Playlist playlist) throws Exception {
-    Map<String, OldAndNew> all = new HashMap<>();
-    for (PlaylistItem item : asPlaylistItems(playlistFetchService.readItems(playlist.getYoutubeId())))
-      all.computeIfAbsent(item.getYoutubeId(), id -> new OldAndNew()).newItem = item;
-    for (PlaylistItem item : playlists.findItemsByPlaylist(playlist.getId()))
-      all.computeIfAbsent(item.getYoutubeId(), id -> new OldAndNew()).oldItem = item;
+  private List<PlaylistItemChange> doItemChanges(Playlist playlist) throws Exception {
+    Map<String, PlaylistItem> existing = toMap(playlists.findItemsByPlaylist(playlist.getId()), PlaylistItem::getYoutubeId);
+    Map<String, ItemInfo> latest = toMap(playlistFetchService.readItems(playlist.getYoutubeId()), i -> i.id);
 
     List<PlaylistItemChange> changes = new ArrayList<>();
-    all.forEach((id, pair) -> {
-      if (pair.newItem == null) {
-        changes.add(new PlaylistItemChange(id, pair.oldItem.getTitle(), null));
-        playlists.removeFromPlaylist(playlist.getId(), pair.oldItem.getId());
-        log.info("removed item {} from {}", pair.oldItem.getYoutubeId(), playlist.getYoutubeId());
-        if (playlists.findPlaylistsByItem(pair.oldItem.getId()).isEmpty()) {
-          log.info("dropping track {} - last synced playlist removed it", pair.oldItem.getYoutubeId());
-          playlists.deleteItem(pair.oldItem.getId());
-        }
-      } else if (pair.oldItem == null) {
-        changes.add(new PlaylistItemChange(id, null, pair.newItem.getTitle()));
-        PlaylistItem item = playlists.findItemByYoutubeId(pair.newItem.getYoutubeId());
-        if (item == null) {
-          playlists.create(pair.newItem);
-          item = pair.newItem;
-          log.info("initialized item {}", item.getYoutubeId());
-        } else if (!Objects.equals(item.getTitle(), pair.newItem.getTitle())) {
-          item.setTitle(pair.newItem.getTitle());
-          playlists.update(item);
-          log.info("updated item {}", item.getYoutubeId());
-        }
-        playlists.addToPlaylist(playlist.getId(), item.getId());
-        log.info("added item {} to {}", item.getYoutubeId(), playlist.getYoutubeId());
-      } else if (!Objects.equals(pair.oldItem.getTitle(), pair.newItem.getTitle())) {
-        changes.add(new PlaylistItemChange(id, pair.oldItem.getTitle(), pair.newItem.getTitle()));
-        pair.oldItem.setTitle(pair.newItem.getTitle());
-        playlists.update(pair.oldItem);
-        log.info("updated item {}", pair.oldItem.getYoutubeId());
+    for (PlaylistItem item : existing.values()) {
+      ItemInfo info = latest.get(item.getYoutubeId());
+      if (info == null) {
+        playlists.deleteItem(item);
+        changes.add(new PlaylistItemChange(item.getYoutubeId(), item.getTitle(), null));
+      } else if (!Objects.equals(item.getTitle(), info.title)) {
+        item.setTitle(info.title);
+        playlists.update(item);
+        changes.add(new PlaylistItemChange(item.getYoutubeId(), item.getTitle(), info.title));
       }
-    });
+    }
+    for (ItemInfo info : latest.values()) {
+      PlaylistItem item = existing.get(info.id);
+      if (item == null) {
+        item = new PlaylistItem(playlist.getId(), info.id, info.title);
+        playlists.insert(item);
+        changes.add(new PlaylistItemChange(item.getYoutubeId(), null, info.title));
+      }
+    }
     return changes;
   }
 
-  private Set<PlaylistItem> asPlaylistItems(List<PlaylistFetchService.ItemInfo> items) {
-    Set<PlaylistItem> result = new HashSet<>();
-    for (PlaylistFetchService.ItemInfo item : items) {
-      if (item.id != null)
-        result.add(new PlaylistItem(null, item.id, item.title));
-    }
+  private Map<Account, Map<Playlist, List<PlaylistItemChange>>> getChangesByAccount(Map<Playlist, List<PlaylistItemChange>> changes) {
+    Map<Account, Map<Playlist, List<PlaylistItemChange>>> result = new HashMap<>();
+    changes.forEach((playlist, itemChanges) -> {
+      for (Account account : accounts.findByPlaylist(playlist.getId())) {
+        result.computeIfAbsent(account, a -> new HashMap<>()).put(playlist, itemChanges);
+      }
+    });
     return result;
   }
 
-  private String parseListId(String url) {
-    // e.g. https://www.youtube.com/playlist?list=PL7USMo--IcSi5p44jTZTezqS3Z-MEC6DU
-    Matcher matcher = Pattern.compile(".*[?&]list=([A-Za-z0-9\\-_]+).*").matcher(url);
-    if (matcher.matches()) {
-      return matcher.group(1);
-    }
-    throw new IllegalArgumentException(url);
-  }
-
-  private static class OldAndNew {
-    PlaylistItem oldItem, newItem;
-  }
-
-  public static class PlaylistItemChange {
-
-    public final String playlistItem;
-    public final String oldTitle;
-    public final String newTitle;
-
-    public PlaylistItemChange(String playlistItem, String oldTitle, String newTitle) {
-      this.playlistItem = playlistItem;
-      this.oldTitle = oldTitle;
-      this.newTitle = newTitle;
-    }
-
-    public String getPlaylistItem() {
-      return playlistItem;
-    }
-
-    public String getOldTitle() {
-      return oldTitle;
-    }
-
-    public String getNewTitle() {
-      return newTitle;
-    }
-
-    @Override
-    public String toString() {
-      return "PlaylistItemChange{" +
-          "playlistItem='" + playlistItem + '\'' +
-          ", oldTitle='" + oldTitle + '\'' +
-          ", newTitle='" + newTitle + '\'' +
-          '}';
-    }
-  }
 }

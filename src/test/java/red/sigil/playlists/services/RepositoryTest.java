@@ -8,11 +8,11 @@ import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import red.sigil.playlists.entities.Account;
-import red.sigil.playlists.entities.Playlist;
-import red.sigil.playlists.entities.PlaylistItem;
 import red.sigil.playlists.jdbi.InstantArgumentFactory;
 import red.sigil.playlists.jdbi.InstantColumnMapper;
+import red.sigil.playlists.model.Account;
+import red.sigil.playlists.model.Playlist;
+import red.sigil.playlists.model.PlaylistItem;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -23,17 +23,16 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static red.sigil.playlists.utils.CollectionHelper.findFirst;
 
 public class RepositoryTest {
 
@@ -91,30 +90,10 @@ public class RepositoryTest {
       verifyPlaylist(singletonList(yid3), 3L);
     }
     {
-      List<Playlist> lists = playlists.findByYoutubeIdIn(new HashSet<>(asList("yid3", "yid5")));
-      assertEquals(2, lists.size());
-      verifyPlaylist(lists, 3);
-      verifyPlaylist(lists, 5);
-    }
-    {
       List<PlaylistItem> items = playlists.findItemsByPlaylist(4L);
       assertEquals(2, items.size());
       verifyItem(items, 7);
       verifyItem(items, 8);
-    }
-    {
-      PlaylistItem yid7 = playlists.findItemByYoutubeId("yid7");
-      verifyItem(singletonList(yid7), 7L);
-    }
-    {
-      PlaylistItem item = playlists.findItemById(7L);
-      verifyItem(singletonList(item), 7);
-    }
-    {
-      List<Playlist> lists = playlists.findPlaylistsByItem(8L);
-      assertEquals(2, lists.size());
-      verifyPlaylist(lists, 4);
-      verifyPlaylist(lists, 5);
     }
     {
       Account acc = accounts.findByEmail("email1");
@@ -165,11 +144,12 @@ public class RepositoryTest {
 
   @Test
   public void deletePlaylist() throws Exception {
-    loadFixture("/fixture_deletable.sql");
+    loadFixture("/fixture_extras.sql");
+
     PlaylistRepository playlists = jdbi.attach(PlaylistRepository.class);
-    assertNotNull(playlists.findByYoutubeId("yid9"));
-    playlists.deletePlaylist(9L);
-    assertNull(playlists.findByYoutubeId("yid9"));
+    assertNotNull(playlists.findByYoutubeId("yid10"));
+    playlists.removePlaylistOrphans();
+    assertNull(playlists.findByYoutubeId("yid10"));
   }
 
   @Test
@@ -189,50 +169,26 @@ public class RepositoryTest {
   }
 
   @Test
-  public void addToPlaylist() {
-    PlaylistRepository playlists = jdbi.attach(PlaylistRepository.class);
-    assertFalse(playlists.findItemsByPlaylist(3L).stream().anyMatch(p -> p.getId() == 8L));
-    playlists.addToPlaylist(3L, 8L);
-    assertTrue(playlists.findItemsByPlaylist(3L).stream().anyMatch(p -> p.getId() == 8L));
-  }
-
-  @Test
-  public void removeFromPlaylist() {
-    PlaylistRepository playlists = jdbi.attach(PlaylistRepository.class);
-    assertTrue(playlists.findItemsByPlaylist(3L).stream().anyMatch(p -> p.getId() == 7L));
-    playlists.removeFromPlaylist(3L, 7L);
-    assertFalse(playlists.findItemsByPlaylist(3L).stream().anyMatch(p -> p.getId() == 7L));
-  }
-
-  @Test
   public void createItem() {
     PlaylistRepository playlists = jdbi.attach(PlaylistRepository.class);
-    PlaylistItem item = new PlaylistItem(null, "addedYid", "addedTitle");
-    playlists.create(item);
-    PlaylistItem added = playlists.findItemById(item.getId());
-    assertEquals(item.getTitle(), added.getTitle());
-    assertEquals(item.getYoutubeId(), added.getYoutubeId());
+    playlists.insert(new PlaylistItem(3L, "yid10", "title10"));
+    PlaylistItem item = findFirst(playlists.findItemsByPlaylist(3L), i -> i.getYoutubeId().equals("yid10"));
+    assertEquals("title10", item.getTitle());
   }
 
   @Test
   public void updateItem() {
     PlaylistRepository playlists = jdbi.attach(PlaylistRepository.class);
-    PlaylistItem yid8 = playlists.findItemById(8L);
-    yid8.setTitle("title8_updated");
-    yid8.setYoutubeId("yid8_updated");
-    playlists.update(yid8);
-    PlaylistItem updated = playlists.findItemById(8L);
-    assertEquals(yid8.getTitle(), updated.getTitle());
-    assertEquals(yid8.getYoutubeId(), updated.getYoutubeId());
+    playlists.update(new PlaylistItem(3L, "yid6", "title6updated"));
+    PlaylistItem item = findFirst(playlists.findItemsByPlaylist(3L), i -> i.getYoutubeId().equals("yid6"));
+    assertEquals("title6updated", item.getTitle());
   }
 
   @Test
-  public void deleteItem() throws Exception {
-    loadFixture("/fixture_deletable.sql");
+  public void deleteItem() {
     PlaylistRepository playlists = jdbi.attach(PlaylistRepository.class);
-    assertNotNull(playlists.findItemById(10L));
-    playlists.deleteItem(10L);
-    assertNull(playlists.findItemById(10L));
+    playlists.deleteItem(new PlaylistItem(3L, "yid6", "title6"));
+    assertNull(findFirst(playlists.findItemsByPlaylist(3L), i -> i.getYoutubeId().equals("yid6")));
   }
 
   private void verifyAccount(List<Account> accs, long id) {
@@ -264,10 +220,8 @@ public class RepositoryTest {
   private void verifyItem(List<PlaylistItem> items, long id) {
     int count = 0;
     for (PlaylistItem item : items) {
-      if (item.getId() == id) {
+      if (item.getYoutubeId().equals("yid" + id) && item.getTitle().equals("title" + id)) {
         count++;
-        assertEquals("yid" + id, item.getYoutubeId());
-        assertEquals("title" + id, item.getTitle());
       }
     }
     assertEquals(1, count);

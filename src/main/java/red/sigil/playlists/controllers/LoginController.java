@@ -1,6 +1,9 @@
 package red.sigil.playlists.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +27,9 @@ public class LoginController {
 
   @GetMapping("/auth/login")
   public String renderLogin() {
+    if (isAuthenticated()) {
+      return "redirect:/";
+    }
     return "login";
   }
 
@@ -34,5 +40,10 @@ public class LoginController {
     userService.register(username, password);
     request.login(username, password);
     return "redirect:/";
+  }
+
+  private boolean isAuthenticated() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    return auth != null && !(auth instanceof AnonymousAuthenticationToken);
   }
 }

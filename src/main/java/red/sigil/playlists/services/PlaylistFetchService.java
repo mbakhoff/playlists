@@ -8,7 +8,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -32,7 +31,6 @@ public class PlaylistFetchService {
   private ObjectMapper mapper;
   private String apiKey;
 
-  @Autowired
   public PlaylistFetchService(Environment env) {
     this.env = env;
   }
