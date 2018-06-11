@@ -82,7 +82,9 @@ public class PlaylistService {
 
     Map<Playlist, List<PlaylistItemChange>> allChanges = new HashMap<>();
     for (Playlist playlist : stale) {
-      allChanges.put(playlist, doItemChanges(playlist));
+      List<PlaylistItemChange> changes = doItemChanges(playlist);
+      if (!changes.isEmpty())
+        allChanges.put(playlist, changes);
     }
     return allChanges;
   }
