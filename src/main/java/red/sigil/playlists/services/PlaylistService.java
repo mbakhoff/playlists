@@ -97,20 +97,20 @@ public class PlaylistService {
     for (PlaylistItem item : existing.values()) {
       ItemInfo info = latest.get(item.getYoutubeId());
       if (info == null) {
-        playlists.deleteItem(item);
         changes.add(new PlaylistItemChange(item.getYoutubeId(), item.getTitle(), null));
+        playlists.deleteItem(item);
       } else if (!Objects.equals(item.getTitle(), info.title)) {
+        changes.add(new PlaylistItemChange(item.getYoutubeId(), item.getTitle(), info.title));
         item.setTitle(info.title);
         playlists.update(item);
-        changes.add(new PlaylistItemChange(item.getYoutubeId(), item.getTitle(), info.title));
       }
     }
     for (ItemInfo info : latest.values()) {
       PlaylistItem item = existing.get(info.id);
       if (item == null) {
+        changes.add(new PlaylistItemChange(info.id, null, info.title));
         item = new PlaylistItem(playlist.getId(), info.id, info.title);
         playlists.insert(item);
-        changes.add(new PlaylistItemChange(item.getYoutubeId(), null, info.title));
       }
     }
     return changes;
