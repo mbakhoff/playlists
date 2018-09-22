@@ -17,8 +17,6 @@ import red.sigil.playlists.model.PlaylistItem;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -50,9 +48,7 @@ public class RepositoryTest {
     jdbi.registerColumnMapper(Instant.class, new InstantColumnMapper());
     jdbi.registerArgument(new InstantArgumentFactory());
     this.jdbi = jdbi.open();
-    try (Reader reader = Files.newBufferedReader(Paths.get("schema.sql"))) {
-      RunScript.execute(conn, reader);
-    }
+    loadFixture("/schema.sql");
     loadFixture("/fixture.sql");
   }
 

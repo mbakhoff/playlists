@@ -23,6 +23,7 @@ import red.sigil.playlists.jdbi.InstantColumnMapper;
 import red.sigil.playlists.jdbi.TransactionAwareJdbiAttachment;
 import red.sigil.playlists.services.AccountRepository;
 import red.sigil.playlists.services.PlaylistRepository;
+import red.sigil.playlists.utils.H2Setup;
 
 import javax.sql.DataSource;
 import java.time.Instant;
@@ -40,7 +41,8 @@ public class Boot {
   }
 
   @Bean
-  Jdbi jdbi(DataSource ds) {
+  Jdbi jdbi(DataSource ds) throws Exception {
+    H2Setup.ensureSchema(ds);
     Jdbi jdbi = Jdbi.create(new TransactionAwareDataSourceProxy(ds));
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.registerRowMapper(ConstructorMapper.factory(Account.class));

@@ -1,5 +1,6 @@
 .idea
 *.iml
 target
+ypt-h2
 **/application.properties
 *.log
