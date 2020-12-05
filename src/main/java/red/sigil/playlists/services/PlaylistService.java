@@ -90,27 +90,27 @@ public class PlaylistService {
   }
 
   private List<PlaylistItemChange> doItemChanges(Playlist playlist) throws Exception {
-    Map<String, PlaylistItem> existing = toMap(playlists.findItemsByPlaylist(playlist.getId()), PlaylistItem::getYoutubeId);
-    Map<String, ItemInfo> latest = toMap(playlistFetchService.readItems(playlist.getYoutubeId()), i -> i.id);
+    Map<String, PlaylistItem> allExisting = toMap(playlists.findItemsByPlaylist(playlist.getId()), PlaylistItem::getYoutubeId);
+    Map<String, ItemInfo> allLatest = toMap(playlistFetchService.readItems(playlist.getYoutubeId()), i -> i.id);
 
     List<PlaylistItemChange> changes = new ArrayList<>();
-    for (PlaylistItem item : existing.values()) {
-      ItemInfo info = latest.get(item.getYoutubeId());
-      if (info == null) {
+    for (PlaylistItem item : allExisting.values()) {
+      ItemInfo latest = allLatest.get(item.getYoutubeId());
+      if (latest == null) {
         changes.add(new PlaylistItemChange(item.getYoutubeId(), item.getTitle(), null));
         playlists.deleteItem(item);
-      } else if (!Objects.equals(item.getTitle(), info.title)) {
-        changes.add(new PlaylistItemChange(item.getYoutubeId(), item.getTitle(), info.title));
-        item.setTitle(info.title);
+      } else if (!Objects.equals(item.getTitle(), latest.title)) {
+        changes.add(new PlaylistItemChange(item.getYoutubeId(), item.getTitle(), latest.title));
+        item.setTitle(latest.title);
         playlists.update(item);
       }
     }
-    for (ItemInfo info : latest.values()) {
-      PlaylistItem item = existing.get(info.id);
-      if (item == null) {
+    for (ItemInfo info : allLatest.values()) {
+      PlaylistItem existing = allExisting.get(info.id);
+      if (existing == null) {
         changes.add(new PlaylistItemChange(info.id, null, info.title));
-        item = new PlaylistItem(playlist.getId(), info.id, info.title);
-        playlists.insert(item);
+        existing = new PlaylistItem(playlist.getId(), info.id, info.title);
+        playlists.insert(existing);
       }
     }
     return changes;
