@@ -5,9 +5,9 @@ import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.mapper.reflect.ConstructorMapper;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import red.sigil.playlists.jdbi.InstantArgumentFactory;
 import red.sigil.playlists.jdbi.InstantColumnMapper;
 import red.sigil.playlists.model.Account;
@@ -25,11 +25,11 @@ import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static red.sigil.playlists.utils.CollectionHelper.findFirst;
 
 public class RepositoryTest {
@@ -37,7 +37,7 @@ public class RepositoryTest {
   private Connection conn;
   private Handle jdbi;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     conn = DriverManager.getConnection("jdbc:h2:mem:;MODE=PostgreSQL");
     Jdbi jdbi = Jdbi.create(() -> conn);
@@ -58,7 +58,7 @@ public class RepositoryTest {
     }
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     jdbi.close();
     conn.close();

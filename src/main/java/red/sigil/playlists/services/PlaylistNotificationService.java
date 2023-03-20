@@ -1,15 +1,15 @@
 package red.sigil.playlists.services;
 
+import jakarta.mail.Message;
+import jakarta.mail.internet.MimeMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.context.Context;
-import org.thymeleaf.spring5.SpringTemplateEngine;
+import org.thymeleaf.spring6.SpringTemplateEngine;
 import red.sigil.playlists.model.Account;
 import red.sigil.playlists.model.Playlist;
 import red.sigil.playlists.model.PlaylistItemChange;
 
-import javax.mail.Message;
-import javax.mail.internet.MimeMessage;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;

@@ -1,5 +1,7 @@
 package red.sigil.playlists.controllers;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -10,9 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import red.sigil.playlists.services.RegisterableUserService;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
 
 @Controller
 @Transactional(rollbackFor = Throwable.class)
