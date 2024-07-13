@@ -52,7 +52,7 @@ public class PlaylistFetchService {
 
     JsonNode root = mapper.readTree(resp.body());
     JsonNode items = root.at("/items");
-    if (items.size() == 0)
+    if (items.isEmpty())
       throw new PlaylistNotFound(playlistId);
 
     JsonNode playlist = items.get(0);

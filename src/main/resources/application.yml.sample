@@ -1,0 +1,25 @@
+server.forward-headers-strategy: "native"
+server.tomcat.remoteip.internal-proxies: "127.0.0.1|0:0:0:0:0:0:0:1"
+
+yt-apikey: "change me"
+
+spring:
+  jpa:
+    hibernate.ddl-auto: "validate"
+    open-in-view: false
+  datasource:
+    url: "jdbc:h2:./ypt2-h2/db"
+  mail:
+    host: "mail.runbox.com"
+    username: "mart.bakhoff"
+    password: "change me"
+    protocol: "smtps"
+    properties.mail.smtps.from: "mbakhoff@sigil.red"
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: "157593095359-qvi2mrhknr00jg2j1eoikqkpit6bbgqs.apps.googleusercontent.com"
+            client-secret: "change me"
+            scopes: "openid https://www.googleapis.com/auth/userinfo.email"

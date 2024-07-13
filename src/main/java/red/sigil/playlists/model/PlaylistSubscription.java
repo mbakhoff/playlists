@@ -7,7 +7,7 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Version;
 
 @Entity
-public class PlaylistItem {
+public class PlaylistSubscription {
 
   @Id
   @GeneratedValue
@@ -19,9 +19,19 @@ public class PlaylistItem {
   @OneToOne
   private Playlist playlist;
 
-  private String youtubeId;
+  @OneToOne
+  private Account account;
 
-  private String title;
+  private Long lastChange;
+
+  public PlaylistSubscription() {
+  }
+
+  public PlaylistSubscription(Playlist playlist, Account account) {
+    this.playlist = playlist;
+    this.account = account;
+    this.lastChange = 0L;
+  }
 
   public Long getId() {
     return id;
@@ -47,19 +57,19 @@ public class PlaylistItem {
     this.playlist = playlist;
   }
 
-  public String getYoutubeId() {
-    return youtubeId;
+  public Account getAccount() {
+    return account;
   }
 
-  public void setYoutubeId(String youtubeId) {
-    this.youtubeId = youtubeId;
+  public void setAccount(Account account) {
+    this.account = account;
   }
 
-  public String getTitle() {
-    return title;
+  public Long getLastChange() {
+    return lastChange;
   }
 
-  public void setTitle(String title) {
-    this.title = title;
+  public void setLastChange(Long lastChange) {
+    this.lastChange = lastChange;
   }
 }

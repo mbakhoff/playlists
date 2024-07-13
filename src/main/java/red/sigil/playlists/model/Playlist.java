@@ -1,21 +1,31 @@
 package red.sigil.playlists.model;
 
-import java.time.Instant;
-import java.util.Objects;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Version;
 
+import java.time.Instant;
+
+@Entity
 public class Playlist {
 
+  @Id
+  @GeneratedValue
   private Long id;
+
+  @Version
+  private Long version;
+
   private String youtubeId;
+
   private String title;
+
   private Instant lastUpdate;
 
-  public Playlist(Long id, String youtubeId, String title, Instant lastUpdate) {
-    this.id = id;
-    this.youtubeId = youtubeId;
-    this.title = title;
-    this.lastUpdate = lastUpdate;
-  }
+  @OneToOne
+  public PlaylistChange lastChange;
 
   public Long getId() {
     return id;
@@ -23,6 +33,14 @@ public class Playlist {
 
   public void setId(Long id) {
     this.id = id;
+  }
+
+  public Long getVersion() {
+    return version;
+  }
+
+  public void setVersion(Long version) {
+    this.version = version;
   }
 
   public String getYoutubeId() {
@@ -49,19 +67,11 @@ public class Playlist {
     this.lastUpdate = lastUpdate;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o)
-      return true;
-    if (o == null || getClass() != o.getClass())
-      return false;
-
-    Playlist other = (Playlist) o;
-    return Objects.equals(youtubeId, other.youtubeId);
+  public PlaylistChange getLastChange() {
+    return lastChange;
   }
 
-  @Override
-  public int hashCode() {
-    return Objects.hashCode(youtubeId);
+  public void setLastChange(PlaylistChange lastChange) {
+    this.lastChange = lastChange;
   }
 }

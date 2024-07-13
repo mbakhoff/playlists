@@ -8,7 +8,7 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 import red.sigil.playlists.model.Account;
 import red.sigil.playlists.model.Playlist;
-import red.sigil.playlists.model.PlaylistItemChange;
+import red.sigil.playlists.model.PlaylistChange;
 
 import java.io.IOException;
 import java.util.Date;
@@ -26,7 +26,7 @@ public class PlaylistNotificationService {
     this.engine = engine;
   }
 
-  public void sendChangeNotification(Account account, Map<Playlist, List<PlaylistItemChange>> changes) throws Exception {
+  public void sendChangeNotification(Account account, Map<Playlist, List<PlaylistChange>> changes) throws Exception {
     sendHtml(account.getEmail(), generateNotification(changes));
   }
 
@@ -39,7 +39,7 @@ public class PlaylistNotificationService {
     mailSender.send(msg);
   }
 
-  private String generateNotification(Map<Playlist, List<PlaylistItemChange>> playlistChanges) throws IOException {
+  private String generateNotification(Map<Playlist, List<PlaylistChange>> playlistChanges) throws IOException {
     Context model = new Context();
     model.setVariable("playlistChanges", playlistChanges);
     return engine.process("notification", model);

@@ -2,5 +2,7 @@
 *.iml
 target
 ypt-h2
+ypt2-h2
 **/application.properties
+**/application.yml
 *.log
