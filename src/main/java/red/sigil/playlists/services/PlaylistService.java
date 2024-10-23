@@ -179,7 +179,7 @@ public class PlaylistService {
           subscription = entityManager.merge(subscription);
           var changes = changeRepo.findByPlaylistAndIdGreaterThanOrderByIdAsc(subscription.getPlaylist(), subscription.getLastChange());
           allChanges.put(subscription.getPlaylist(), changes);
-          var newBookmark = changes.getLast().getId();
+          var newBookmark = changes.get(changes.size() - 1).getId();
           log.info("subscription " + subscription.getId() + " updating " + subscription.getLastChange() + " -> " + newBookmark);
           subscription.setLastChange(newBookmark);
         }
