@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.3.4</version>
+    <version>3.5.7</version>
   </parent>
 
   <groupId>red.sigil</groupId>
@@ -50,7 +50,7 @@
     <dependency>
       <groupId>com.sun.mail</groupId>
       <artifactId>jakarta.mail</artifactId>
-      <version>2.0.1</version>
+      <version>2.0.2</version>
     </dependency>
 
     <!-- missing spring starter deps? -->
