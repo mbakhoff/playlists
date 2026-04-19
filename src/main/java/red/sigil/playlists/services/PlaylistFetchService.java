@@ -1,11 +1,11 @@
 package red.sigil.playlists.services;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.http.HttpClient;
@@ -57,8 +57,8 @@ public class PlaylistFetchService {
 
     JsonNode playlist = items.get(0);
     return new ItemInfo(
-            playlist.at("/id").asText(),
-            playlist.at("/snippet/title").asText());
+            playlist.at("/id").asString(),
+            playlist.at("/snippet/title").asString());
   }
 
   public List<ItemInfo> readItems(String playlistId) throws Exception {
@@ -78,11 +78,11 @@ public class PlaylistFetchService {
         throw new IOException(resp.statusCode() + " " + resp.body());
 
       JsonNode root = mapper.readTree(resp.body());
-      page = root.at("/nextPageToken").asText(null);
+      page = root.at("/nextPageToken").asString(null);
       for (JsonNode playlistItem : root.at("/items")) {
         ItemInfo info = new ItemInfo(
-                playlistItem.at("/contentDetails/videoId").asText(),
-                playlistItem.at("/snippet/title").asText());
+                playlistItem.at("/contentDetails/videoId").asString(),
+                playlistItem.at("/snippet/title").asString());
         if ("Deleted video".equals(info.title) || "Private video".equals(info.title))
           continue;
         playlist.add(info);
